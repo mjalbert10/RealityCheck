@@ -52,6 +52,7 @@ npm run dev
 # 1. Set up Python virtual environment
 python3 -m venv venv
 source venv/bin/activate
+# source venv/bin/activate
 
 # 2. Install Python dependencies
 pip install -r requirements.txt
