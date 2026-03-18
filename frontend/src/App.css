@@ -35,10 +35,21 @@ header {
   overflow: hidden;
 }
 
+.filter-area {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
 /* INPUT GROUPS */
 .selection-area label {
   margin-top: 7px;
   font-weight: 500;
+}
+
+input[type="number"] {
+  width: 100px;
 }
 
 .selection-area input,
@@ -57,16 +68,21 @@ header {
 
 /* CHECKBOXES */
 .checkbox-group {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 5px;
+  font-size: 14px;
 }
 
 /* RADIO BUTTONS */
 .radio-group {
   display: flex;
-  flex-direction: column;
-  gap: 5px;
+  flex-direction: row;
+  gap: 20px;
+}
+
+label input[type="radio"] {
+  margin-right: 3px;
 }
 
 /* BUTTON */
@@ -102,6 +118,7 @@ header {
   width: 20px;
   height: 20px;
 }
+
 .search-input {
   display: flex;
   align-items: center;
@@ -122,6 +139,32 @@ header {
   border: none;
   outline: none;
   flex: 1;
+}
+
+.similarity-toggle {
+  margin: 10px 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.filter-button {
+  background-color: #d3af37;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: 0.2s;
+  padding: 5px;
+  margin-right: 5px;
+}
+
+.filter-button:hover {
+  background-color: #f0c94a;
+}
+
+.button-message {
+  font-size: 14px;
+  color: #000;
 }
 
 /* RESULTS */
@@ -153,7 +196,8 @@ header {
   background-color: #d3af37;
   color: #000;
   padding: 4px 8px;
-  margin: 8px 4px;
+  margin-right: 8px;
+  margin-top: 4px;
   border-radius: 4px;
   font-size: 12px;
 }
@@ -161,9 +205,51 @@ header {
 /* TEXT STYLE */
 .emphasis {
   color: #61dafb;
+  font-weight: bold;
 }
 
 .titles {
   color: #d3af37;
   margin: 15px 0;
+}
+
+label {
+  font-weight: bold;
+  font-size: 18px;
+  color: #61dafb;
+}
+
+.placeholder {
+  color: #888;
+}
+
+.options {
+    font-size: 15px;
+    color: #fff;
+}
+
+h3 {
+  color: #61dafb;
+  margin-right: 10px;
+  font-size: 14px;
+}
+
+.result-title {
+  font-size: 25px;
+  font-weight: bold;
+  color: #d3af37;
+  padding-bottom: 5px;
+}
+
+.result-subtitle {
+  font-size: 14px;
+  font-weight: bold;
+  color: #61dafb;
+  padding-bottom: 5px;
+}
+
+.result-description {
+  font-size: 16px;
+  color: #fff;
+  padding: 5px 0;
 }
