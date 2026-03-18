@@ -27,7 +27,7 @@ for term, idx in term_to_idx.items():
     df_count = df_counts.get(term, 0)
     idf[idx] = 1 / (df_count + 1)
 
-# Convert docs to vectors
+# Convert docs to vectors/Cosine Simliarity 
 def vectorize(tokens):
     vec = np.zeros(V)
     counts = Counter(tokens)
