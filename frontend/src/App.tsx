@@ -17,7 +17,7 @@ function App() {
       <div className="main-content">
         {/* Filter area */}
         <div className="selection-area">
-          <h2>First the basics...</h2>
+          <h2 className="titles">First the basics...</h2>
 
           {/* Subgenre */}
           <label>Type of Reality:</label>
@@ -29,11 +29,11 @@ function App() {
           </select>
 
           {/* Year Range */}
-          <label>Year Range:</label>
+          <label>Release Year:</label>
           <div className="range-selection">
-            <input type="number" placeholder="Start Year" />
+            <input type="number" placeholder="Start Year"  min="1900" max="2026"/>
             <span>to</span>
-            <input type="number" placeholder="End Year" />
+            <input type="number" placeholder="End Year" min="1900" max="2026"/>
           </div>
 
           {/* Language */}
@@ -45,13 +45,13 @@ function App() {
             <label><input type="checkbox" value="hi" /> Hindi</label>
           </div>
 
-          <h2>Now some fun...</h2>
+          <h2 className="titles">Now some fun...</h2>
 
           {/* Ratings */}
           <label>Ratings:</label>
           <div className="range-selection">
-            <input type="number" placeholder="Min" />
-            <input type="number" placeholder="Max" />
+            <input type="number" placeholder="Min" min="0" max="10" />
+            <input type="number" placeholder="Max" min="0" max="10" />
           </div>
 
           {/* Popularity */}
@@ -73,10 +73,11 @@ function App() {
             <input
               type="text"
               placeholder="e.g. dramatic survival show"
+              className="search-bar"
             />
           </div>
 
-          <h2>Search Results</h2>
+          <h2 className="titles">Search Results</h2>
 
           <div className="results-list">
             <Result
