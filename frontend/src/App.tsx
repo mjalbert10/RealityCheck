@@ -1,62 +1,95 @@
-import { useState, useEffect } from 'react'
 import './App.css'
+import Result from './components/result'
 import SearchIcon from './assets/mag.png'
-import { Episode } from './types'
-import Chat from './Chat'
 
-function App(): JSX.Element {
-  const [useLlm, setUseLlm] = useState<boolean | null>(null)
-  const [searchTerm, setSearchTerm] = useState<string>('')
-  const [episodes, setEpisodes] = useState<Episode[]>([])
-
-  useEffect(() => {
-    fetch('/api/config').then(r => r.json()).then(data => setUseLlm(data.use_llm))
-  }, [])
-
-  const handleSearch = async (value: string): Promise<void> => {
-    setSearchTerm(value)
-    if (value.trim() === '') { setEpisodes([]); return }
-    const response = await fetch(`/api/episodes?title=${encodeURIComponent(value)}`)
-    const data: Episode[] = await response.json()
-    setEpisodes(data)
-  }
-
-  if (useLlm === null) return <></>
-
+function App() {
   return (
-    <div className={`full-body-container ${useLlm ? 'llm-mode' : ''}`}>
-      {/* Search bar (always shown) */}
-      <div className="top-text">
-        <div className="google-colors">
-          <h1 id="google-4">4</h1>
-          <h1 id="google-3">3</h1>
-          <h1 id="google-0-1">0</h1>
-          <h1 id="google-0-2">0</h1>
+    <div className="App">
+      <header>
+        <div>
+          <h1>RealityCheck</h1>
         </div>
-        <div className="input-box" onClick={() => document.getElementById('search-input')?.focus()}>
-          <img src={SearchIcon} alt="search" />
-          <input
-            id="search-input"
-            placeholder="Search for a Keeping up with the Kardashians episode"
-            value={searchTerm}
-            onChange={(e) => handleSearch(e.target.value)}
-          />
-        </div>
-      </div>
+        <p>
+          Keeping the TV show search <span className="emphasis">REAL</span>
+        </p>
+      </header>
 
-      {/* Search results (always shown) */}
-      <div id="answer-box">
-        {episodes.map((episode, index) => (
-          <div key={index} className="episode-item">
-            <h3 className="episode-title">{episode.title}</h3>
-            <p className="episode-desc">{episode.descr}</p>
-            <p className="episode-rating">IMDB Rating: {episode.imdb_rating}</p>
+      <div className="main-content">
+        {/* Filter area */}
+        <div className="selection-area">
+          <h2>First the basics...</h2>
+
+          {/* Subgenre */}
+          <label>Type of Reality:</label>
+          <select>
+            <option value="">Select a subgenre</option>
+            <option value="dating">Dating</option>
+            <option value="survival">Survival</option>
+            <option value="performance">Performance</option>
+          </select>
+
+          {/* Year Range */}
+          <label>Year Range:</label>
+          <div className="range-selection">
+            <input type="number" placeholder="Start Year" />
+            <span>to</span>
+            <input type="number" placeholder="End Year" />
           </div>
-        ))}
-      </div>
 
-      {/* Chat (only when USE_LLM = True in routes.py) */}
-      {useLlm && <Chat onSearchTerm={handleSearch} />}
+          {/* Language */}
+          <label>Language:</label>
+          <div className="checkbox-group">
+            <label><input type="checkbox" value="en" /> English</label>
+            <label><input type="checkbox" value="sp" /> Spanish</label>
+            <label><input type="checkbox" value="ko" /> Korean</label>
+            <label><input type="checkbox" value="hi" /> Hindi</label>
+          </div>
+
+          <h2>Now some fun...</h2>
+
+          {/* Ratings */}
+          <label>Ratings:</label>
+          <div className="range-selection">
+            <input type="number" placeholder="Min" />
+            <input type="number" placeholder="Max" />
+          </div>
+
+          {/* Popularity */}
+          <label>People Traffic:</label>
+          <div className="radio-group">
+            <label><input type="radio" name="traffic" value="low" /> Low</label>
+            <label><input type="radio" name="traffic" value="medium" /> Medium</label>
+            <label><input type="radio" name="traffic" value="high" /> High</label>
+          </div>
+
+          {/* Button */}
+          <button className="search-button">Find Results</button>
+        </div>
+
+        {/* Search and Results Area */}
+        <div className="results-area">
+          <div className="search-input">
+            <img src={SearchIcon} alt="Search Icon" className="search-icon" />
+            <input
+              type="text"
+              placeholder="e.g. dramatic survival show"
+            />
+          </div>
+
+          <h2>Search Results</h2>
+
+          <div className="results-list">
+            <Result
+              title="Survivor"
+              year={2000}
+              rating={8.0}
+              similarity={0.95}
+              description="A group of strangers are stranded in a remote location and must work together to survive while competing in challenges."
+              tags={['Survival', 'Adventure', 'Competition']}
+            />
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
