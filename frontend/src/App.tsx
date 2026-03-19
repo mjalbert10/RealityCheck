@@ -1,14 +1,42 @@
 import './App.css'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Result from './components/result'
 import SearchIcon from './assets/mag.png'
 
 export default function App() {
+  // Filter menu visibility
   const [filtersOn, setFiltersOn] = useState(false);
+
+  // Search and results states
+  const [simModel, setSimModel] = useState('');
+  const [results, setResults] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Additional filters states
+  const [subgenre, setSubgenre] = useState('');
+  const [yearRange, setYearRange] = useState({ start: '', end: '' });
+  const [language, setLanguage] = useState<string[]>([]);
+  const [ratings, setRatings] = useState({ min: '', max: '' });
+  const [popularity, setPopularity] = useState('');
+
+  useEffect(() => {
+    // Placeholder for fetching results based on searchQuery and filters
+    // This is where you would make an API call to your backend with the search parameters
+    console.log('Search Query:', searchQuery);
+    console.log('Selected Similarity Model:', simModel);
+    console.log('Subgenre:', subgenre);
+    console.log('Year Range:', yearRange);
+    console.log('Language:', language);
+    console.log('Ratings:', ratings);
+    console.log('Popularity:', popularity);
+    
+  }, [searchQuery, simModel, subgenre, yearRange, language, ratings, popularity]);
+
 
   const toggleFilters = () => {
     setFiltersOn(!filtersOn);
   };
+
 
   return (
     <div className="App">
@@ -30,8 +58,8 @@ export default function App() {
 
             {/* Subgenre */}
             <label>Type of Reality:</label>
-            <select>
-              <option className="placeholder" value="" disabled hidden>Select a subgenre</option>
+            <select onChange={(e) => setSubgenre(e.target.value)}>
+              <option className="placeholder" value="" disabled selected>Select a subgenre</option>
               <option value="dating">Dating</option>
               <option value="survival">Survival</option>
               <option value="performance">Performance</option>
@@ -40,18 +68,42 @@ export default function App() {
             {/* Year Range */}
             <label>Release Year:</label>
             <div className="range-selection">
-              <input type="number" placeholder="Start"  min="1900" max="2026"/>
+              <input type="number" placeholder="Start"  min="1900" max="2026" onChange={(e) => setYearRange({...yearRange, start: e.target.value})}/>
               <span>to</span>
-              <input type="number" placeholder="End" min="1900" max="2026"/>
+              <input type="number" placeholder="End" min="1900" max="2026" onChange={(e) => setYearRange({...yearRange, end: e.target.value})}/>
             </div>
 
             {/* Language */}
             <label>Language:</label>
             <div className="checkbox-group">
-              <label className="options"><input type="checkbox" value="en" /> English</label>
-              <label className="options"><input type="checkbox" value="sp" /> Spanish</label>
-              <label className="options"><input type="checkbox" value="ko" /> Korean</label>
-              <label className="options"><input type="checkbox" value="hi" /> Hindi</label>
+              <label className="options" ><input type="checkbox" value="en" onChange={(e) => {
+                if (e.target.checked) {
+                  setLanguage([...language, e.target.value]);
+                } else {
+                  setLanguage(language.filter((v) => v !== e.target.value));
+                }
+              }} /> English</label>
+              <label className="options"><input type="checkbox" value="sp" onChange={(e) => {
+                if (e.target.checked) {
+                  setLanguage([...language, e.target.value]);
+                } else {
+                  setLanguage(language.filter((v) => v !== e.target.value));
+                }
+              }} /> Spanish</label>
+              <label className="options"><input type="checkbox" value="ko" onChange={(e) => {
+                if (e.target.checked) {
+                  setLanguage([...language, e.target.value]);
+                } else {
+                  setLanguage(language.filter((v) => v !== e.target.value));
+                }
+              }} /> Korean</label>
+              <label className="options"><input type="checkbox" value="hi" onChange={(e) => {
+                if (e.target.checked) {
+                  setLanguage([...language, e.target.value]);
+                } else {
+                  setLanguage(language.filter((v) => v !== e.target.value));
+                }
+              }} /> Hindi</label>
             </div>
 
             <h2 className="titles">Now some fun...</h2>
@@ -59,17 +111,17 @@ export default function App() {
             {/* Ratings */}
             <label>Ratings:</label>
             <div className="range-selection">
-              <input type="number" placeholder="Min" min="0" max="10" />
+              <input type="number" placeholder="Min" min="0" max="10" onChange={(e) => setRatings({...ratings, min: e.target.value})}/>
               <p>to</p>
-              <input type="number" placeholder="Max" min="0" max="10" />
+              <input type="number" placeholder="Max" min="0" max="10" onChange={(e) => setRatings({...ratings, max: e.target.value})}/>
             </div>
 
             {/* Popularity */}
             <label>People Traffic:</label>
             <div className="radio-group">
-              <label className="options"><input type="radio" name="traffic" value="low" /> Low</label>
-              <label className="options"><input type="radio" name="traffic" value="medium" /> Medium</label>
-              <label className="options"><input type="radio" name="traffic" value="high" /> High</label>
+              <label className="options"><input type="radio" name="traffic" value="low" onChange={(e) => setPopularity(e.target.value)} /> Low</label>
+              <label className="options"><input type="radio" name="traffic" value="medium" onChange={(e) => setPopularity(e.target.value)} /> Medium</label>
+              <label className="options"><input type="radio" name="traffic" value="high" onChange={(e) => setPopularity(e.target.value)} /> High</label>
             </div>
 
             {/* Button */}
@@ -87,6 +139,7 @@ export default function App() {
               type="text"
               placeholder="e.g. dramatic survival show"
               className="search-bar"
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
 
@@ -96,9 +149,9 @@ export default function App() {
             </button>
             <h3> Similarity Function: </h3>
             <div className="radio-group">
-              <label className="options"><input type="radio" name="sim-function" value="cosine" /> Cosine</label>
-              <label className="options"><input type="radio" name="sim-function" value="tfidf" /> TF-IDF</label>
-              <label className="options"><input type="radio" name="sim-function" value="svd" /> SVD</label>
+              <label className="options"><input type="radio" name="sim-function" value="cosine" onChange={(e) => setSimModel(e.target.value)} /> Cosine</label>
+              <label className="options"><input type="radio" name="sim-function" value="tfidf" onChange={(e) => setSimModel(e.target.value)} /> TF-IDF</label>
+              <label className="options"><input type="radio" name="sim-function" value="svd" onChange={(e) => setSimModel(e.target.value)} /> SVD</label>
             </div>
           </div>
 
