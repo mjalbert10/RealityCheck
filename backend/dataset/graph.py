@@ -1,5 +1,6 @@
 import json
 import matplotlib.pyplot as plt
+from collections import Counter
 
 # Load JSON
 with open("tmdb.json", "r", encoding="utf-8") as f:
@@ -99,3 +100,41 @@ plt.show()
 # plt.xscale("log")
 # plt.tight_layout()
 # plt.show()
+
+# -------------------------
+# 4. Shows per language
+# -------------------------
+languages = [show["original_language"] for show in shows if show.get("original_language")]
+lang_counts = Counter(languages)
+
+# Keep top 20 languages for readability
+top_langs = lang_counts.most_common(20)
+labels, counts = zip(*top_langs)
+
+plt.figure(figsize=(10, 5))
+bars = plt.bar(labels, counts, edgecolor="black")
+plt.xlabel("Language Code")
+plt.ylabel("Number of Shows")
+plt.title("Top 20 Languages — Reality TV Shows")
+for bar, count in zip(bars, counts):
+    plt.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 5,
+             str(count), ha="center", va="bottom", fontsize=8)
+plt.tight_layout()
+plt.show()
+
+# -------------------------
+# 5. Word count of overviews
+# -------------------------
+word_counts = [
+    len(show["overview"].split())
+    for show in shows
+    if show.get("overview") and show["overview"].strip()
+]
+
+plt.figure(figsize=(8, 5))
+plt.hist(word_counts, bins=30, edgecolor="black")
+plt.xlabel("Word Count")
+plt.ylabel("Number of Shows")
+plt.title("Distribution of Overview Word Counts — Reality TV Shows")
+plt.tight_layout()
+plt.show()
