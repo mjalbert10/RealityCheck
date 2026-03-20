@@ -44,7 +44,7 @@ interface FilterOptions {
 
 export default function App() {
   const [filtersOn, setFiltersOn] = useState(false);
-  const [simModel, setSimModel] = useState('');
+  const [simModel, setSimModel] = useState('cosine');
   const [results, setResults] = useState<ShowResult[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterOptions, setFilterOptions] = useState<FilterOptions | null>(null);

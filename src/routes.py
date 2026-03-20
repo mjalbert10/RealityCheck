@@ -7,9 +7,9 @@ def register_routes(app):
 
     @app.route("/api/filters")
     def get_filters():
-        from preprocess import load_movies
+        from preprocess import load_shows
         from collections import Counter
-        df = load_movies()
+        df = load_shows()
 
         lang_counts = Counter(df["original_language"].dropna().tolist())
         languages = [lang for lang, _ in lang_counts.most_common(10)]
