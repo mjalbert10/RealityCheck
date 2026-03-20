@@ -28,8 +28,8 @@ def build_reddit_tokens(row):
   return tokens
 
 def load_shows(): 
-  """Creates a dataframe from tmdb.json"""
-  df = pd.read_json("dataset/tmdb.json")
+  """Creates a dataframe from init.json"""
+  df = pd.read_json("dataset/init.json")
 
   df["name_tokens"] = df["name"].apply(tokenize)
   df["overview_tokens"] = df["overview"].apply(tokenize)
