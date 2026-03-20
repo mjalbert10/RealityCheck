@@ -31,31 +31,29 @@ register_routes(app)
 # Function to initialize database, change this to your own database initialization logic
 def init_db():
     with app.app_context():
-        # Create all tables
         db.create_all()
         
-        # Initialize database with data from init.json if empty
         if Episode.query.count() == 0:
             json_file_path = os.path.join(current_directory, 'init.json')
             with open(json_file_path, 'r') as file:
                 data = json.load(file)
-                for episode_data in data['episodes']:
+                
+                for show in data:  # flat array, no key needed
                     episode = Episode(
-                        id=episode_data['id'],
-                        title=episode_data['title'],
-                        descr=episode_data['descr']
+                        id=show['id'],
+                        title=show['name'],        # TMDB uses 'name'
+                        descr=show['overview']     # TMDB uses 'overview'
                     )
                     db.session.add(episode)
-                
-                for review_data in data['reviews']:
+                    
                     review = Review(
-                        id=review_data['id'],
-                        imdb_rating=review_data['imdb_rating']
+                        id=show['id'],
+                        imdb_rating=show['vote_average']  # TMDB uses 'vote_average'
                     )
                     db.session.add(review)
             
             db.session.commit()
-            print("Database initialized with episodes and reviews data")
+            print("Database initialized with reality show data")
 
 init_db()
 
