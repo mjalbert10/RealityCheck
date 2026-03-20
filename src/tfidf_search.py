@@ -1,21 +1,13 @@
 from collections import Counter
+import os
 import numpy as np
 
-from preprocess import load_movies, tokenize
+from preprocess import load_shows, tokenize
 
-df = load_movies()
-df = df[df["vote_average"] > 0]
-df = df[df["overview"].str.strip() != ""]
-df = df.dropna(subset=["overview"])
-# Make vocabulary
-vocab = set()
-for tokens in df["all_tokens"]:
-    vocab.update(tokens)
+CACHE_PATH = "dataset/tfidf_cache.npz"
+MIN_DF = 3  # ignore terms that appear in fewer than 3 shows
 
-vocab = sorted(vocab)
-term_to_idx = {term: i for i, term in enumerate(vocab)}
-
-V = len(vocab)
+df = load_shows().reset_index(drop=True)
 N = len(df)
 
 # DF
@@ -23,51 +15,115 @@ df_counts = Counter()
 for tokens in df["all_tokens"]:
     df_counts.update(set(tokens))
 
+# Vocabulary: only keep terms that appear in >= MIN_DF shows
+vocab = sorted(term for term, count in df_counts.items() if count >= MIN_DF)
+term_to_idx = {term: i for i, term in enumerate(vocab)}
+V = len(vocab)
+
 # IDF
-idf = np.zeros(V)
-for term, idx in term_to_idx.items():
-    df_count = df_counts.get(term, 0)
-    idf[idx] = 1 / (df_count + 1)
+idf = np.array([1 / (df_counts[term] + 1) for term in vocab])
 
 # Convert docs to vectors
 def vectorize(tokens):
     vec = np.zeros(V)
     counts = Counter(tokens)
-
     for term, tf in counts.items():
         if term in term_to_idx:
-            idx = term_to_idx[term]
-            vec[idx] = tf * idf[idx]
+            vec[term_to_idx[term]] = tf * idf[term_to_idx[term]]
     return vec
 
-# TF-IDF
-df["tfidf_vec"] = df["all_tokens"].apply(vectorize)
+# Load cached matrix or build and save it
+if os.path.exists(CACHE_PATH):
+    cache = np.load(CACHE_PATH)
+    doc_matrix = cache["doc_matrix"]
+    doc_norms = cache["doc_norms"]
+else:
+    df["tfidf_vec"] = df["all_tokens"].apply(vectorize)
+    doc_matrix = np.stack(df["tfidf_vec"].values)
+    doc_norms = np.linalg.norm(doc_matrix, axis=1)
+    np.savez(CACHE_PATH, doc_matrix=doc_matrix, doc_norms=doc_norms)
 
-# Cosine similarity
-def cosine_sim(v1, v2):
-    if np.linalg.norm(v1) == 0 or np.linalg.norm(v2) == 0:
-        return 0
-    return np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))
-                             
-def tfidf_search(query, top_k = 5):
+def tfidf_search(query, candidates=None, top_k=5):
+    if candidates is None:
+        candidates = df
+
     query_tokens = tokenize(query)
     query_vec = vectorize(query_tokens)
 
-    scores = []
+    query_norm = np.linalg.norm(query_vec)
+    if query_norm == 0:
+        return []
 
-    for _, row in df.iterrows():
-        score = cosine_sim(query_vec, row["tfidf_vec"])
-        if score > 0.01:
-            scores.append({
-                "score": score,
-                "title": row["name"],
-                "description": row["overview"],
-                "language": row["original_language"],
-                "popularity": row["popularity"],
-                "rating": row["vote_average"],
-                "first_air_date": row["first_air_date"],
-                "genre_ids": row["genre_ids"] if isinstance(row.get("genre_ids"), list) else [],
-            })
-    
-    scores.sort(key=lambda x: x["score"], reverse=True)
-    return scores[:top_k]
+    idx = candidates.index.to_numpy()
+    sub_matrix = doc_matrix[idx]
+    sub_norms = doc_norms[idx]
+
+    norms = sub_norms * query_norm
+    mask = norms > 0
+    scores = np.zeros(len(idx))
+    scores[mask] = sub_matrix[mask] @ query_vec / norms[mask]
+
+    top_pos = np.argsort(scores)[::-1][:top_k]
+    return [(scores[i], candidates.iloc[i]["name"]) for i in top_pos if scores[i] > 0]
+
+
+def apply_filters(df, genre_id=None, language=None, rating=None, traffic=None,
+                  release_year=None):
+    """
+    Narrows down the TMDB dataframe to only have filtered results
+
+    Note: rating and release_year must have 2 elements in their lists
+    """
+    # all inputs should be lists (even if only 1 element)
+    filtered = df
+
+    if genre_id is not None:
+        # boolean masks for each result
+        filtered = filtered[
+            filtered["genre_ids"].apply(
+                lambda genres: isinstance(genres, list) and genre_id in genres
+            )
+        ]
+    if language is not None:
+        # filtered = filtered[filtered["original_language"] == language]
+        filtered = filtered[
+            filtered["original_language"].apply(
+                lambda langs: isinstance(langs, list) and language in langs
+            )
+        ]
+    if rating is not None:
+        # filtered = filtered[filtered["vote_average"] == rating]
+        filtered = filtered[
+            filtered["vote_average"].apply(
+                lambda vote_avg: True if rating[0] <= vote_avg <= rating[1] else False
+            )
+        ]
+    # ADJUST LOGIC
+    # if traffic is not None:
+    #     filtered = filtered[
+    #         filtered["popularity"].apply(
+    #             lambda popularity: isinstance(popularity, list) and traffic in popularity
+    #         )
+    #     ]
+    if release_year is not None:
+        # filtered = filtered[filtered["first_air_date"] == release_year]
+        filtered = filtered[
+            filtered["first_air_date"].apply(
+                lambda date: True if release_year[0] <= date <= release_year[1] else False
+            )
+        ]
+    return filtered
+
+
+def search(query, top_k=5, genre_id=None, language=None, rating=None, traffic=None,
+                  release_year=None):
+    """Uses filters along with tfdidf_search"""
+    candidates = apply_filters(
+        df,
+        genre_id=genre_id,
+        language=language,
+        rating=rating,
+        traffic=traffic,
+        release_year=release_year
+    )
+    return tfidf_search(query, candidates, top_k=top_k)
