@@ -1,5 +1,5 @@
 import './App.css'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Result from './components/result'
 import SearchIcon from './assets/mag.png'
 
@@ -64,30 +64,47 @@ export default function App() {
       .catch((err) => console.error('Failed to load filters:', err));
   }, []);
 
-  // Fetch results when search params change
+  const toggleFilters = () => setFiltersOn(!filtersOn);
+
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Trigger search whenever query or filters change
   useEffect(() => {
-    if (!searchQuery.trim()) return;
+    setResults([]);
 
-    const params = new URLSearchParams({
-      q: searchQuery,
-      ...(simModel && { model: simModel }),
-      ...(subgenre && { subgenre }),
-      ...(yearRange.start && { year_start: yearRange.start }),
-      ...(yearRange.end && { year_end: yearRange.end }),
-      ...(language.length > 0 && { language: language.join(',') }),
-      ...(ratings.min && { rating_min: ratings.min }),
-      ...(ratings.max && { rating_max: ratings.max }),
-      ...(popularity && { popularity }),
-    });
+    if (!searchQuery.trim()) {
+      setResults([]);  // clear results when query is empty
+      return;
+    }
 
-    fetch(`http://localhost:5001/api/search?${params}`)
-      .then((res) => res.json())
-      .then((data) => setResults(data))
-      .catch((err) => console.error('Search failed:', err));
+    // Clear previous timer
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    // Wait 100ms after user stops typing before searching
+    debounceRef.current = setTimeout(() => {
+      const params = new URLSearchParams({
+        q: searchQuery,
+        ...(simModel && { model: simModel }),
+        ...(subgenre && { subgenre }),
+        ...(yearRange.start && { year_start: yearRange.start }),
+        ...(yearRange.end && { year_end: yearRange.end }),
+        ...(language.length > 0 && { language: language.join(',') }),
+        ...(ratings.min && { rating_min: ratings.min }),
+        ...(ratings.max && { rating_max: ratings.max }),
+        ...(popularity && { popularity }),
+      });
+
+      fetch(`http://localhost:5001/api/search?${params}`)
+        .then((res) => res.json())
+        .then((data) => setResults(data))
+        .catch((err) => console.error('Search failed:', err));
+    }, 100);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
 
   }, [searchQuery, simModel, subgenre, yearRange, language, ratings, popularity]);
-
-  const toggleFilters = () => setFiltersOn(!filtersOn);
 
   return (
     <div className="App">
