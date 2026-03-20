@@ -2,38 +2,24 @@ import os
 from flask import send_from_directory, request, jsonify
 from models import db, Episode, Review
 from tfidf_search import tfidf_search
+from preprocess import load_movies
+from collections import Counter
 
+_df_cache = None
 
-# def json_search(query):
-#     if not query or not query.strip():
-#         query = "Kardashian"
-#     results = db.session.query(Episode, Review).join(
-#         Review, Episode.id == Review.id
-#     ).filter(
-#         Episode.title.ilike(f'%{query}%')
-#     ).all()
-#     matches = []
-#     for episode, review in results:
-#         matches.append({
-#             'title': episode.title,
-#             'descr': episode.descr,
-#             'imdb_rating': review.imdb_rating
-#         })
-#     return matches
-
+def get_df():
+    global _df_cache
+    if _df_cache is None:
+        _df_cache = load_movies()
+    return _df_cache
 
 def register_routes(app):
-
-    # @app.route("/api/episodes")
-    # def episodes_search():
-    #     text = request.args.get("title", "")
-    #     return jsonify(json_search(text))
 
     @app.route("/api/filters")
     def get_filters():
         from preprocess import load_movies
         from collections import Counter
-        df = load_movies()
+        df = get_df()
 
         lang_counts = Counter(df["original_language"].dropna().tolist())
         languages = [lang for lang, _ in lang_counts.most_common(10)]
