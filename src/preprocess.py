@@ -2,34 +2,34 @@ import pandas as pd
 import re
 from pathlib import Path
 
-def load_shows(): 
-  """Creates a dataframe from tmdb.json"""
-  df = pd.read_json("dataset/tmdb.json")
-
-  def tokenize(text):
+def tokenize(text):
     if pd.isna(text):
       return []
     text = text.lower()
     return re.findall(r"\b[a-z0-9]+\b", text)
   
-  def build_reddit_tokens(row):
-    """Combines all Reddit posts and comments into a single list of tokens"""
-    tokens = []
+def build_reddit_tokens(row):
+  """Combines all Reddit posts and comments into a single list of tokens"""
+  tokens = []
 
-    posts = row["reddit_posts"] if "reddit_posts" in row else []
-    if isinstance(posts, list):
-      for post in posts:
-        if isinstance(post, dict):
-          tokens.extend(tokenize(post.get("title", "")))
-          tokens.extend(tokenize(post.get("text", "")))
+  posts = row["reddit_posts"] if "reddit_posts" in row else []
+  if isinstance(posts, list):
+    for post in posts:
+      if isinstance(post, dict):
+        tokens.extend(tokenize(post.get("title", "")))
+        tokens.extend(tokenize(post.get("text", "")))
 
-    comments = row["reddit_comments"] if "reddit_comments" in row else []
-    if isinstance(comments, list):
-      for comment in comments:
-        if isinstance(comment, dict):
-          tokens.extend(tokenize(comment.get("text", "")))
+  comments = row["reddit_comments"] if "reddit_comments" in row else []
+  if isinstance(comments, list):
+    for comment in comments:
+      if isinstance(comment, dict):
+        tokens.extend(tokenize(comment.get("text", "")))
 
-    return tokens
+  return tokens
+
+def load_shows(): 
+  """Creates a dataframe from tmdb.json"""
+  df = pd.read_json("dataset/tmdb.json")
 
   df["name_tokens"] = df["name"].apply(tokenize)
   df["overview_tokens"] = df["overview"].apply(tokenize)

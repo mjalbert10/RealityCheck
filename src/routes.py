@@ -1,17 +1,7 @@
 import os
 from flask import send_from_directory, request, jsonify
-from models import db, Episode, Review
-from tfidf_search import tfidf_search
-from preprocess import load_movies
-from collections import Counter
+from tfidf_search import tfidf_search, cosine_search
 
-_df_cache = None
-
-def get_df():
-    global _df_cache
-    if _df_cache is None:
-        _df_cache = load_movies()
-    return _df_cache
 
 def register_routes(app):
 
@@ -19,7 +9,7 @@ def register_routes(app):
     def get_filters():
         from preprocess import load_movies
         from collections import Counter
-        df = get_df()
+        df = load_movies()
 
         lang_counts = Counter(df["original_language"].dropna().tolist())
         languages = [lang for lang, _ in lang_counts.most_common(10)]
@@ -34,7 +24,6 @@ def register_routes(app):
             if isinstance(ids, list):
                 all_genre_ids.update(ids)
         all_genre_ids.discard(10764)
-
 
         return jsonify({
             "languages": languages,
@@ -56,6 +45,7 @@ def register_routes(app):
         if not query.strip():
             return jsonify([])
 
+        model = request.args.get("model", "tfidf")
         year_start = request.args.get("year_start", "")
         year_end = request.args.get("year_end", "")
         languages = request.args.get("language", "")
@@ -64,41 +54,23 @@ def register_routes(app):
         popularity = request.args.get("popularity", "")
         subgenre = request.args.get("subgenre", "")
 
-        results = tfidf_search(query, top_k=50)
+        # Build filter kwargs
+        kwargs = {
+            "top_k": 20,
+            "genre_id": int(subgenre) if subgenre else None,
+            "languages": languages.split(",") if languages else None,
+            "rating": [float(rating_min), float(rating_max)] if rating_min and rating_max else None,
+            "popularity": popularity if popularity else None,
+            "release_year": [int(year_start), int(year_end)] if year_start and year_end else None,
+        }
 
-        lang_list = languages.split(",") if languages else []
+        if model == "cosine":
+            results = cosine_search(query, **kwargs)
+        else:
+            results = tfidf_search(query, **kwargs)
 
-        filtered = []
-        for show in results:
-            year = int(str(show["first_air_date"]).split("-")[0]) if show.get("first_air_date") else None
-            if year_start and year and year < int(year_start):
-                continue
-            if year_end and year and year > int(year_end):
-                continue
-
-            if lang_list and show.get("language") not in lang_list:
-                continue
-
-            if rating_min and show.get("rating", 0) < float(rating_min):
-                continue
-            if rating_max and show.get("rating", 0) > float(rating_max):
-                continue
-
-            if popularity:
-                pop = show.get("popularity", 0)
-                if popularity == "low" and pop >= 2:      # replace with your 33rd percentile
-                    continue
-                if popularity == "medium" and not (2 <= pop < 20):  # replace with your boundaries
-                    continue
-                if popularity == "high" and pop < 20:     # replace with your 66th percentile
-                    continue
-
-            if subgenre and int(subgenre) not in show.get("genre_ids", []):
-                continue
-
-            filtered.append(show)
-
-        return jsonify(filtered[:20])
+        results.sort(key=lambda x: x["score"], reverse=True)
+        return jsonify(results)
 
     # Catch-all LAST
     @app.route('/', defaults={'path': ''})
