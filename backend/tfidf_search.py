@@ -1,21 +1,13 @@
 from collections import Counter
+import os
 import numpy as np
 
 from preprocess import load_shows, tokenize
 
+CACHE_PATH = "dataset/tfidf_cache.npz"
+MIN_DF = 3  # ignore terms that appear in fewer than 3 shows
+
 df = load_shows().reset_index(drop=True)
-
-TOTAL_SHOWS = 17017
-
-# Make vocabulary
-vocab = set()
-for tokens in df["all_tokens"]:
-    vocab.update(tokens)
-
-vocab = sorted(vocab)
-term_to_idx = {term: i for i, term in enumerate(vocab)}
-
-V = len(vocab)
 N = len(df)
 
 # DF
@@ -23,30 +15,33 @@ df_counts = Counter()
 for tokens in df["all_tokens"]:
     df_counts.update(set(tokens))
 
+# Vocabulary: only keep terms that appear in >= MIN_DF shows
+vocab = sorted(term for term, count in df_counts.items() if count >= MIN_DF)
+term_to_idx = {term: i for i, term in enumerate(vocab)}
+V = len(vocab)
+
 # IDF
-idf = np.zeros(V)
-for term, idx in term_to_idx.items():
-    df_count = df_counts.get(term, 0)
-    idf[idx] = 1 / (df_count + 1)
-    # idf[idx] = np.log((TOTAL_SHOWS + 1) / (df_count + 1)) + 1
+idf = np.array([1 / (df_counts[term] + 1) for term in vocab])
 
 # Convert docs to vectors
 def vectorize(tokens):
     vec = np.zeros(V)
     counts = Counter(tokens)
-
     for term, tf in counts.items():
         if term in term_to_idx:
-            idx = term_to_idx[term]
-            vec[idx] = tf * idf[idx]
+            vec[term_to_idx[term]] = tf * idf[term_to_idx[term]]
     return vec
 
-# TF-IDF
-df["tfidf_vec"] = df["all_tokens"].apply(vectorize)
-
-# Build document matrix once (N x V) for fast matrix operations
-doc_matrix = np.stack(df["tfidf_vec"].values)
-doc_norms = np.linalg.norm(doc_matrix, axis=1)
+# Load cached matrix or build and save it
+if os.path.exists(CACHE_PATH):
+    cache = np.load(CACHE_PATH)
+    doc_matrix = cache["doc_matrix"]
+    doc_norms = cache["doc_norms"]
+else:
+    df["tfidf_vec"] = df["all_tokens"].apply(vectorize)
+    doc_matrix = np.stack(df["tfidf_vec"].values)
+    doc_norms = np.linalg.norm(doc_matrix, axis=1)
+    np.savez(CACHE_PATH, doc_matrix=doc_matrix, doc_norms=doc_norms)
 
 def tfidf_search(query, candidates=None, top_k=5):
     if candidates is None:
