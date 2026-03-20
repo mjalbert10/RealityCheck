@@ -3,7 +3,7 @@ import numpy as np
 
 from preprocess import load_shows, tokenize
 
-df = load_shows()
+df = load_shows().reset_index(drop=True)
 
 TOTAL_SHOWS = 17017
 
@@ -44,25 +44,32 @@ def vectorize(tokens):
 # TF-IDF
 df["tfidf_vec"] = df["all_tokens"].apply(vectorize)
 
-# Cosine similarity
-def cosine_sim(v1, v2):
-    if np.linalg.norm(v1) == 0 or np.linalg.norm(v2) == 0:
-        return 0
-    return np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))
-                             
-def tfidf_search(query, top_k = 5):
+# Build document matrix once (N x V) for fast matrix operations
+doc_matrix = np.stack(df["tfidf_vec"].values)
+doc_norms = np.linalg.norm(doc_matrix, axis=1)
+
+def tfidf_search(query, candidates=None, top_k=5):
+    if candidates is None:
+        candidates = df
+
     query_tokens = tokenize(query)
     query_vec = vectorize(query_tokens)
 
-    scores = []
+    query_norm = np.linalg.norm(query_vec)
+    if query_norm == 0:
+        return []
 
-    for _, row in df.iterrows():
-        score = cosine_sim(query_vec, row["tfidf_vec"])
-        if score > 0:
-            scores.append((score, row["name"]))
-    
-    scores.sort(reverse = True)
-    return scores[:top_k]
+    idx = candidates.index.to_numpy()
+    sub_matrix = doc_matrix[idx]
+    sub_norms = doc_norms[idx]
+
+    norms = sub_norms * query_norm
+    mask = norms > 0
+    scores = np.zeros(len(idx))
+    scores[mask] = sub_matrix[mask] @ query_vec / norms[mask]
+
+    top_pos = np.argsort(scores)[::-1][:top_k]
+    return [(scores[i], candidates.iloc[i]["name"]) for i in top_pos if scores[i] > 0]
 
 
 def apply_filters(df, genre_id=None, language=None, rating=None, traffic=None,
