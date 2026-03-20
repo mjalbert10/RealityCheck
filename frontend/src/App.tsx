@@ -240,7 +240,7 @@ export default function App() {
             </button>
             <h3>Similarity Function:</h3>
             <div className="radio-group">
-              {[['cosine', 'Cosine'], ['tfidf', 'TF-IDF'], ['svd', 'SVD']].map(([val, label]) => (
+              {[['cosine', 'Cosine'], ['svd', 'SVD']].map(([val, label]) => (
                 <label key={val} className="options" style={val === 'svd' ? { opacity: 0.4 } : {}}>
                   <input
                     type="radio"
