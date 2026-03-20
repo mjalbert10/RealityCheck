@@ -48,6 +48,6 @@ def load_reviews_multi(file_path, text_columns):
     return df
 
 if __name__ == "__main__":
-    df_review = load_reviews("dataset/reviews.json")
+    df_reviews = load_reviews("dataset/reviews.json")
     # if multiple fields
     # df_reviews = load_reviews_multi("dataset/reivews.json", text_columns=["content", "title"])

@@ -96,7 +96,10 @@ export default function App() {
 
       fetch(`http://localhost:5001/api/search?${params}`)
         .then((res) => res.json())
-        .then((data) => setResults(data))
+        .then((data) => {
+          console.log('Results:', data.map((s: ShowResult) => s.title));
+          setResults(data);
+        })
         .catch((err) => console.error('Search failed:', err));
     }, 100);
 
@@ -258,9 +261,9 @@ export default function App() {
             {results.length === 0 ? (
               <p>No results yet — try searching above!</p>
             ) : (
-              results.map((show) => (
+              results.map((show, index) => (
                 <Result
-                  key={show.title}
+                  key={`${show.title}-${index}`}
                   title={show.title}
                   year={parseInt(show.first_air_date?.split('-')[0]) || 0}
                   rating={show.rating}

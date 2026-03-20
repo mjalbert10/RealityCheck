@@ -2,8 +2,8 @@ import pandas as pd
 import re
 from pathlib import Path
 
-def load_movies(): 
-# create dataframe from json
+def load_shows(): 
+  """Creates a dataframe from tmdb.json"""
   df = pd.read_json("dataset/tmdb.json")
 
   def tokenize(text):
