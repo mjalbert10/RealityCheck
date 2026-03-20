@@ -58,7 +58,7 @@ export default function App() {
 
   // Fetch available filter options on mount
   useEffect(() => {
-    fetch('http://localhost:5001/api/filters')
+    fetch('/api/filters')
       .then((res) => res.json())
       .then((data) => setFilterOptions(data))
       .catch((err) => console.error('Failed to load filters:', err));
@@ -94,7 +94,7 @@ export default function App() {
         ...(popularity && { popularity }),
       });
 
-      fetch(`http://localhost:5001/api/search?${params}`)
+      fetch(`/api/search?${params}`)
         .then((res) => res.json())
         .then((data) => {
           console.log('Results:', data.map((s: ShowResult) => s.title));
@@ -240,7 +240,7 @@ export default function App() {
             </button>
             <h3>Similarity Function:</h3>
             <div className="radio-group">
-              {[['cosine', 'Cosine'], ['tfidf', 'TF-IDF'], ['svd', 'SVD']].map(([val, label]) => (
+              {[['cosine', 'Cosine'], ['svd', 'SVD']].map(([val, label]) => (
                 <label key={val} className="options" style={val === 'svd' ? { opacity: 0.4 } : {}}>
                   <input
                     type="radio"
