@@ -42,7 +42,7 @@ def load_shows():
   # print(df[["id", "name", "name_tokens", "overview_tokens", "all_tokens", "reddit_tokens"]])
   
   # prints a single row based on ID and specific columns
-  print(df.loc[df["id"] == 7740, ["id", "name", "reddit_tokens"]])
+  # print(df.loc[df["id"] == 7740, ["id", "name", "reddit_tokens"]])
   return df
 
 if __name__ == "__main__":
