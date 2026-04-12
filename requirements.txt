@@ -10,7 +10,7 @@ infosci-spark-client @ git+https://github.com/MrPeterss/infosci-spark-client.git
 itsdangerous==2.2.0
 Jinja2==3.1.6
 MarkupSafe==3.0.3
-numpy==2.4.3
+numpy==2.2.6
 packaging==26.0
 pandas==3.0.1
 python-dateutil==2.9.0.post0
