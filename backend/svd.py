@@ -150,6 +150,6 @@ if __name__ == "__main__":
     df = preprocess.load_shows()
     query = input("Enter a word or sentence: ").strip()
 
-    print("\nClosest words:")
-    for w, sim in svd_search(query, svd, k=10, top_n_terms=5):
-        print(f"{w}, {sim:.3f}")
+    print("\nTop shows:")
+    for result in svd_search(query, svd, df):
+        print(f"{result['title']}, {result['score']:.3f}")
