@@ -43,7 +43,7 @@ interface FilterOptions {
 }
 
 export default function App() {
-  const [filtersOn, setFiltersOn] = useState(false);
+  const [filtersOn, setFiltersOn] = useState(true);
   const [simModel, setSimModel] = useState('cosine');
   const [results, setResults] = useState<ShowResult[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -66,48 +66,39 @@ export default function App() {
 
   const toggleFilters = () => setFiltersOn(!filtersOn);
 
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Trigger search whenever query or filters change
-  useEffect(() => {
-    setResults([]);
-
+  // Set search on keystroke or button click
+  const performSearch = () => {
     if (!searchQuery.trim()) {
-      setResults([]);  // clear results when query is empty
+      setResults([]);
       return;
     }
+  
+    const params = new URLSearchParams({
+      q: searchQuery,
+      ...(simModel && { model: simModel }),
+      ...(subgenre && { subgenre }),
+      ...(yearRange.start && { year_start: yearRange.start }),
+      ...(yearRange.end && { year_end: yearRange.end }),
+      ...(language.length > 0 && { language: language.join(',') }),
+      ...(ratings.min && { rating_min: ratings.min }),
+      ...(ratings.max && { rating_max: ratings.max }),
+      ...(popularity && { popularity }),
+    });
 
-    // Clear previous timer
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-
-    // Wait 100ms after user stops typing before searching
-    debounceRef.current = setTimeout(() => {
-      const params = new URLSearchParams({
-        q: searchQuery,
-        ...(simModel && { model: simModel }),
-        ...(subgenre && { subgenre }),
-        ...(yearRange.start && { year_start: yearRange.start }),
-        ...(yearRange.end && { year_end: yearRange.end }),
-        ...(language.length > 0 && { language: language.join(',') }),
-        ...(ratings.min && { rating_min: ratings.min }),
-        ...(ratings.max && { rating_max: ratings.max }),
-        ...(popularity && { popularity }),
-      });
-
-      fetch(`/api/search?${params}`)
-        .then((res) => res.json())
-        .then((data) => {
-          console.log('Results:', data.map((s: ShowResult) => s.title));
-          setResults(data);
-        })
-        .catch((err) => console.error('Search failed:', err));
-    }, 100);
-
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
+    fetch(`/api/search?${params}`)
+      .then((res) => res.json())
+      .then((data) => {
+        console.log('Results:', data.map((s: ShowResult) => s.title));
+        setResults(data);
+      })
+      .catch((err) => console.error('Search failed:', err));
     };
 
-  }, [searchQuery, simModel, subgenre, yearRange, language, ratings, popularity]);
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      performSearch();
+    }
+  };
 
   return (
     <div className="App">
@@ -225,12 +216,19 @@ export default function App() {
         <div className="results-area">
           <h1>Search For a Show</h1>
           <div className="search-input">
-            <img src={SearchIcon} alt="Search Icon" className="search-icon" />
+            <img 
+              src={SearchIcon} 
+              alt="Search Icon" 
+              className="search-icon" 
+              onClick={performSearch}
+              style={{ cursor: 'pointer' }} 
+            />
             <input
               type="text"
               placeholder="e.g. dramatic survival show"
               className="search-bar"
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={handleKeyPress}
             />
           </div>
 
