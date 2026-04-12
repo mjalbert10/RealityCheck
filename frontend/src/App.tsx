@@ -208,7 +208,7 @@ export default function App() {
                 ))}
               </div>
 
-              <button className="search-button">Find Results</button>
+              <button className="search-button" onClick={performSearch}>Find Results</button>
             </div>
           </div>
         )}
@@ -236,21 +236,6 @@ export default function App() {
             <button className="filter-button" onClick={toggleFilters}>
               {filtersOn ? 'Hide Filters' : 'Show Filters'}
             </button>
-            <h3>Similarity Function:</h3>
-            <div className="radio-group">
-              {[['cosine', 'Cosine'], ['svd', 'SVD']].map(([val, label]) => (
-                <label key={val} className="options" style={val === 'svd' ? { opacity: 0.4 } : {}}>
-                  <input
-                    type="radio"
-                    name="sim-function"
-                    value={val}
-                    defaultChecked={val === 'cosine'}
-                    disabled={val === 'svd'}
-                    onChange={(e) => setSimModel(e.target.value)}
-                  /> {label}{val === 'svd' ? ' (coming soon)' : ''}
-                </label>
-              ))}
-            </div>
           </div>
 
           <h2 className="titles">Search Results</h2>
