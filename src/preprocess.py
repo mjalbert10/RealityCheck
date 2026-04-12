@@ -73,7 +73,9 @@ def build_all_tokens(row):
 
 def load_shows(): 
   """Creates a dataframe from tmdb.json"""
-  df = pd.read_json("init.json")
+  data_path = Path(__file__).resolve().parent / "src" / "init.json"
+  df = pd.read_json(data_path)
+  
 
   df["name_tokens"] = df["name"].apply(tokenize)
   df["overview_tokens"] = df["overview"].apply(tokenize)
