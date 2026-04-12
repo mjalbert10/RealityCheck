@@ -3,10 +3,10 @@ import re
 from pathlib import Path
 
 def tokenize(text):
-    if pd.isna(text):
-      return []
-    text = text.lower()
-    return re.findall(r"\b[a-z0-9]+\b", text)
+  if pd.isna(text):
+    return []
+  text = text.lower()
+  return re.findall(r"\b[a-z0-9]+\b", text)
   
 def load_shows(): 
   """Creates a dataframe from tmdb.json"""
@@ -68,10 +68,10 @@ def filter_reddit(name, overview, reddit_posts, reddit_comments, tokenize, thres
 
     sim = jaccard_sim(item_tokens, meta_tokens)
 
-    if sim >- threshold:
+    if sim >= threshold:
       kept_reddit_tokens.extend(item_tokens)
 
-    return kept_reddit_tokens
+  return kept_reddit_tokens
 
 def build_all_tokens(row, tokenize, reddit_threshold = 0.02):
   name_tokens = tokenize(row.get("name", ""))
