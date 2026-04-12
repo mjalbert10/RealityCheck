@@ -1,6 +1,7 @@
 import pandas as pd
 import re
 from pathlib import Path
+print("=== PREPROCESS.PY LOADED - tokenize function available ===")
 
 def tokenize(text):
   if pd.isna(text):
