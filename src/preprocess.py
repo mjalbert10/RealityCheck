@@ -73,7 +73,7 @@ def build_all_tokens(row):
 
 def load_shows(): 
   """Creates a dataframe from tmdb.json"""
-  data_path = Path(__file__).resolve().parent / "src" / "init.json"
+  data_path = Path(__file__).resolve().parent / "init.json"
   df = pd.read_json(data_path)
   
 
