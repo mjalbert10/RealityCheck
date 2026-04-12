@@ -42,3 +42,23 @@ def spell_correction(query, word1, word2, tokens):
     for q in query: 
         modified_query.append(retrieve_corrected_words(q, tokens)[0][1])
     return modified_query
+
+# takes in token and returns a hash of all synonyms of each tokens using Wordnet 
+# Returned Data structure: {token (str), (number of synonyms, list of synonyms)}
+def query_expansion(tokens): 
+    def add_synonyms(tokens):
+        hashedSynom = {}
+        synonyms = []
+        count = 0
+        for token in set(tokens):
+            for syn in wordnet.synsets(token):
+                for l in syn.lemmas():
+                    if (count < 3):
+                        if l.name() not in synonyms:
+                            synonyms.append(l.name())
+                            count += 1
+            hashedSynom[token] = (count, synonyms)
+            count = 0
+            synonyms = []
+        return hashedSynom
+    return add_synonyms(tokens)
