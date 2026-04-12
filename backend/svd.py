@@ -117,12 +117,39 @@ def closest_words_to_text(text, svd, k=10, top_n_terms=None, exclude_query_words
 
     return results
 
+def svd_search(query, svd, df, top_k=20, genre_id=None, languages=None,
+               rating=None, popularity=None, release_year=None):
+    from tfidf_search import apply_filters, build_result
+
+    q_vec = embed_text(query, svd)
+    if q_vec is None:
+        return []
+
+    # Build doc matrix from SVD word embeddings
+    word_embeddings = svd["word_embeddings"]
+    vectorizer = svd["vectorizer"]
+
+    doc_texts = df["doc_text"].tolist()
+    doc_matrix = vectorizer.transform(doc_texts) @ word_embeddings
+    doc_norms = np.linalg.norm(doc_matrix, axis=1)
+
+    scores = np.zeros(len(df))
+    mask = doc_norms > 0
+    scores[mask] = doc_matrix[mask] @ q_vec / doc_norms[mask]
+
+    candidates = apply_filters(genre_id, languages, rating, popularity, release_year)
+    idx = candidates.index.to_numpy()
+
+    top_pos = np.argsort(scores[idx])[::-1][:top_k]
+    return [build_result(candidates.iloc[i], scores[idx[i]]) 
+            for i in top_pos if scores[idx[i]] > 0.01]
+
 
 if __name__ == "__main__":
     svd = build_svd()
-
+    df = preprocess.load_shows()
     query = input("Enter a word or sentence: ").strip()
 
     print("\nClosest words:")
-    for w, sim in closest_words_to_text(query, svd, k=10, top_n_terms=5):
+    for w, sim in svd_search(query, svd, k=10, top_n_terms=5):
         print(f"{w}, {sim:.3f}")
