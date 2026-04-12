@@ -57,7 +57,7 @@ def filter_reddit(name, overview, reddit_posts, reddit_comments, tokenize, thres
         if sim >= threshold:
             kept_reddit_tokens.extend(item_tokens)
 
-  return kept_reddit_tokens
+    return kept_reddit_tokens
 
 def build_all_tokens(row):
   name_tokens = row["name_tokens"]
