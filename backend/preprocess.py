@@ -69,10 +69,10 @@ def filter_reddit(name, overview, reddit_posts, reddit_comments, tokenize, thres
 
     sim = jaccard_sim(item_tokens, meta_tokens)
 
-    if sim >- threshold:
+    if sim >= threshold:
       kept_reddit_tokens.extend(item_tokens)
 
-    return kept_reddit_tokens
+  return kept_reddit_tokens
 
 def build_all_tokens(row, tokenize, reddit_threshold = 0.02):
   name_tokens = tokenize(row.get("name", ""))
