@@ -2,16 +2,16 @@ import pandas as pd
 import re
 from pathlib import Path
 
-def load_shows(): 
-  """Creates a dataframe from tmdb.json"""
-  df = pd.read_json("dataset/tmdb.json")
-
-  def tokenize(text):
+def tokenize(text):
     if pd.isna(text):
       return []
     text = text.lower()
     return re.findall(r"\b[a-z0-9]+\b", text)
   
+def load_shows(): 
+  """Creates a dataframe from tmdb.json"""
+  df = pd.read_json("src/init.json")
+
   def build_reddit_tokens(row):
     """Combines all Reddit posts and comments into a single list of tokens"""
     tokens = []
