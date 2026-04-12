@@ -11,7 +11,6 @@ def tokenize(text):
 def load_shows(): 
   """Creates a dataframe from tmdb.json"""
   df = pd.read_json("src/init.json")
-
   def build_reddit_tokens(row):
     """Combines all Reddit posts and comments into a single list of tokens"""
     tokens = []

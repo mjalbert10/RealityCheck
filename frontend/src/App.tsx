@@ -1,5 +1,5 @@
 import './App.css'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import Result from './components/result'
 import SearchIcon from './assets/mag.png'
 
@@ -44,7 +44,6 @@ interface FilterOptions {
 
 export default function App() {
   const [filtersOn, setFiltersOn] = useState(true);
-  const [simModel, setSimModel] = useState('cosine');
   const [results, setResults] = useState<ShowResult[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterOptions, setFilterOptions] = useState<FilterOptions | null>(null);
@@ -75,7 +74,6 @@ export default function App() {
   
     const params = new URLSearchParams({
       q: searchQuery,
-      ...(simModel && { model: simModel }),
       ...(subgenre && { subgenre }),
       ...(yearRange.start && { year_start: yearRange.start }),
       ...(yearRange.end && { year_end: yearRange.end }),
