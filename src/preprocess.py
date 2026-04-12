@@ -3,10 +3,10 @@ import re
 from pathlib import Path
 
 def tokenize(text):
-    if pd.isna(text):
-      return []
-    text = text.lower()
-    return re.findall(r"\b[a-z0-9]+\b", text)
+  if pd.isna(text):
+    return []
+  text = text.lower()
+  return re.findall(r"\b[a-z0-9]+\b", text)
   
 def load_shows(): 
   """Creates a dataframe from tmdb.json"""
