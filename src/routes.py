@@ -66,7 +66,6 @@ def register_routes(app):
                 "release_year": [int(year_start), int(year_end)] if year_start and year_end else None,
             }
 
-            print("KWARGS:", kwargs)
             try:
                 results = svd_search(query, _svd, [], **kwargs)
             except Exception as e:

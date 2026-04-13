@@ -49,8 +49,10 @@ export default function Modal({ show, onClose }: ModalProps) {
   if (!show) return null
 
   const year = show.first_air_date?.split('-')[0] ?? 'Unknown'
-  const posterUrl = `https://image.tmdb.org/t/p/w342${show.poster_path}`
+  const posterUrl = `https://image.tmdb.org/t/p/original${show.poster_path}`
 
+  console.log("poster_path value:", show.poster_path)
+  console.log("full URL:", posterUrl)
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -61,8 +63,9 @@ export default function Modal({ show, onClose }: ModalProps) {
                 src={posterUrl}
                 alt={show.title}
                 className="modal-poster"
+                referrerPolicy="no-referrer"
                 onError={(e) => {
-                (e.target as HTMLImageElement).style.display = "none"
+                    console.error("Poster failed to load:", (e.target as HTMLImageElement).src)
                 }}
             />
             ) : (
