@@ -1,5 +1,5 @@
 import os
-from flask import send_from_directory, request, jsonify
+from flask import app, send_from_directory, request, jsonify
 from svd import build_svd, svd_search
 from tfidf_search import tfidf_search
 
@@ -43,38 +43,64 @@ def register_routes(app):
 
     @app.route("/api/search")
     def semantic_search():
-        query = request.args.get("q", "")
-        if not query.strip():
-            return jsonify([])
+        try:
+            query = request.args.get("q", "")
+            if not query.strip():
+                return jsonify([])
 
-        model = request.args.get("model", "tfidf")
-        year_start = request.args.get("year_start", "")
-        year_end = request.args.get("year_end", "")
-        languages = request.args.get("language", "")
-        rating_min = request.args.get("rating_min", "")
-        rating_max = request.args.get("rating_max", "")
-        popularity = request.args.get("popularity", "")
-        subgenre = request.args.get("subgenre", "")
+            model = request.args.get("model", "tfidf")
+            year_start = request.args.get("year_start", "")
+            year_end = request.args.get("year_end", "")
+            languages = request.args.get("language", "")
+            rating_min = request.args.get("rating_min", "")
+            rating_max = request.args.get("rating_max", "")
+            popularity = request.args.get("popularity", "")
+            subgenre = request.args.get("subgenre", "")
 
-        # Build filter kwargs
-        kwargs = {
-            "top_k": 20,
-            "genre_id": int(subgenre) if subgenre else None,
-            "languages": languages.split(",") if languages else None,
-            "rating": [float(rating_min), float(rating_max)] if rating_min and rating_max else None,
-            "popularity": popularity if popularity else None,
-            "release_year": [int(year_start), int(year_end)] if year_start and year_end else None,
-        }
+            kwargs = {
+                "top_k": 20,
+                "genre_id": int(subgenre) if subgenre else None,
+                "languages": languages.split(",") if languages else None,
+                "rating": [float(rating_min), float(rating_max)] if rating_min and rating_max else None,
+                "popularity": popularity if popularity else None,
+                "release_year": [int(year_start), int(year_end)] if year_start and year_end else None,
+            }
 
-        results = svd_search(query, _svd, None, **kwargs) 
-        
-        results.sort(key=lambda x: x["score"], reverse=True)
-        return jsonify(results)
+            print("KWARGS:", kwargs)
+            try:
+                results = svd_search(query, _svd, [], **kwargs)
+            except Exception as e:
+                print("SVD ERROR:", e)
+                results = []
 
+            # make sure it's always a list
+            if not results:
+                results = []
+
+            # remove bad entries
+            clean_results = []
+            for r in results:
+                if isinstance(r, dict):
+                    clean_results.append(r)
+
+            results = clean_results
+
+            # safe sort
+            results.sort(key=lambda x: x.get("score", 0), reverse=True)
+
+            return jsonify(results)
+
+        except Exception as e:
+            print("🔥 SEARCH ERROR:", e)
+            return jsonify({"error": str(e)}), 500
+    
     # Catch-all LAST
     @app.route('/', defaults={'path': ''})
     @app.route('/<path:path>')
     def serve(path):
+        if path.startswith("api"):
+            return jsonify({"error": "Not found"}), 404
+
         if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
             return send_from_directory(app.static_folder, path)
         else:

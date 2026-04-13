@@ -1,5 +1,6 @@
 import './App.css'
 import { useState, useEffect } from 'react'
+import Modal from './components/modal'
 import Result from './components/result'
 import SearchIcon from './assets/mag.png'
 
@@ -32,6 +33,11 @@ interface ShowResult {
   first_air_date: string;
   score: number;
   genre_ids: number[];
+  poster_path: string | null
+  origin_country: string[]
+  vote_count: number
+  reddit_posts: unknown[]
+  reddit_comments: unknown[]
 }
 
 interface FilterOptions {
@@ -97,6 +103,9 @@ export default function App() {
       performSearch();
     }
   };
+
+  // Modal states
+  const [selectedShow, setSelectedShow] = useState<ShowResult | null>(null);
 
   return (
     <div className="App">
@@ -243,20 +252,29 @@ export default function App() {
               <p>No results yet — try searching above!</p>
             ) : (
               results.map((show, index) => (
-                <Result
+                <div
                   key={`${show.title}-${index}`}
-                  title={show.title}
-                  year={parseInt(show.first_air_date?.split('-')[0]) || 0}
-                  rating={show.rating}
-                  similarity={parseFloat(show.score.toFixed(2))}
-                  description={show.description}
-                  tags={show.genre_ids?.map((id) => GENRE_MAP[id] ?? `Genre ${id}`).filter(Boolean) ?? [show.language?.toUpperCase()]}
-                />
+                  onClick={() => setSelectedShow(show)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <Result
+                    title={show.title}
+                    year={parseInt(show.first_air_date?.split('-')[0]) || 0}
+                    rating={show.rating}
+                    similarity={parseFloat(show.score.toFixed(2))}
+                    description={show.description}
+                    tags={show.genre_ids?.map((id) => GENRE_MAP[id] ?? `Genre ${id}`).filter(Boolean) ?? [show.language?.toUpperCase()]}
+                  />
+                </div>
               ))
             )}
           </div>
         </div>
       </div>
+      <Modal
+        show={selectedShow}
+        onClose={() => setSelectedShow(null)}
+      />
     </div>
   )
 }
