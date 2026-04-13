@@ -4,7 +4,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from scipy.sparse.linalg import svds
 from sklearn.preprocessing import normalize
 import preprocess
-from query_expansion import query_expansion
+from query_expansion import query_expansion, spell_correction
 from query_stemming import stem_list
 
 def build_svd(k=50):
@@ -134,15 +134,23 @@ def closest_words_to_text(text, svd, k=10, top_n_terms=None, exclude_query_words
 
     return results
 
-def svd_search(query, svd, top_k=20, genre_id=None, languages=None,
+def svd_search(query, svd, df, top_k=20, genre_id=None, languages=None,
                rating=None, popularity=None, release_year=None):
     from tfidf_search import build_result
     from preprocess import tokenize
 
-    # use the df that matches the doc_matrix
     svd_df = svd["df"].reset_index(drop=True)
+    vocab = list(svd["word_to_index"].keys())
 
-    preprocessed_query = " ".join(tokenize(query))
+    tokens = tokenize(query)
+    corrected = []
+    for token in tokens:
+        if token in svd["word_to_index"]:
+            corrected.append(token)
+        elif len(token) >= 5:
+            corrected.append(spell_correction([token], None, None, vocab)[0])
+
+    preprocessed_query = " ".join(corrected)
     q_vec = embed_text(preprocessed_query, svd)
     if q_vec is None:
         return []
@@ -154,11 +162,11 @@ def svd_search(query, svd, top_k=20, genre_id=None, languages=None,
     return [build_result(svd_df.iloc[i], scores[i])
             for i in top_pos if scores[i] > 0.01]
 
-
 if __name__ == "__main__":
     svd = build_svd()
+    df = preprocess.load_shows()
     query = input("Enter a word or sentence: ").strip()
 
     print("\nTop shows:")
-    for result in svd_search(query, svd):
+    for result in svd_search(query, svd, df):
         print(f"{result['title']}, {result['score']:.3f}")

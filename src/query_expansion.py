@@ -1,7 +1,7 @@
 import pandas as pd
 import re
 from pathlib import Path
-from nltk.corpus import wordnet
+# from nltk.corpus import wordnet
 import numpy as np
 
 # assumes query is a string but can change
@@ -27,20 +27,30 @@ def spell_correction(query, word1, word2, tokens):
             counter += 1
         for l in range(1, i + 1): 
             for g in range(1, j + 1): 
-                m[l][g] = min(m[l-1, g-1] + 0 if word1[l - 1] == word2[g - 1] else 1, m[l-1, g] + 1, m[l, g-1] + 1)
+                cost = 0 if word1[l - 1] == word2[g - 1] else 1
+                m[l][g] = min(
+                    m[l-1, g-1] + cost,
+                    m[l-1, g] + 1,
+                    m[l, g-1] + 1
+                )
         return m[i, j]
+    
+'''
     # candidate retrieval by going through inverted index tokens 
-    def retrieve_corrected_words(word, tokens):
+    def retrieve_corrected_words(word, tokens, max_dist = 2):
         result = []
         for token in tokens:
             score = edit_distance(word, token)
-            result.append((score, token))
+            if score <= max_dist:  # only keep candidates within threshold
+                result.append((score, token))
+        if not result:
+            return [(float('inf'), word)]  # return original word if no good match
         result.sort(key=lambda x: x[0])
         return result
     # run for all of the words in the query (VERY SLOW?), picks top choice
     modified_query = []
     for q in query: 
-        modified_query.append(retrieve_corrected_words(q, tokens)[0][1])
+        modified_query.append(retrieve_corrected_words(q, tokens, max_dist=2)[0][1])
     return modified_query
 
 # takes in token and returns a hash of all synonyms of each tokens using Wordnet 
@@ -62,3 +72,5 @@ def query_expansion(tokens):
             synonyms = []
         return hashedSynom
     return add_synonyms(tokens)
+
+    '''
