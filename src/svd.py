@@ -8,26 +8,33 @@ from query_expansion import spell_correction
 # from query_stemming import stem_list
 
 def build_svd(k=50):
+
   df = preprocess.load_shows()
 
+  # remove rows with short token lists
   df = df[df["all_tokens"].apply(len) > 2].copy()
+  # join show's tokens into single string
   df["all_text"] = df["all_tokens"].apply(lambda toks: " ".join(toks))
     
   vectorizer = TfidfVectorizer(stop_words = 'english', max_df = .7, 
                               min_df = 30)
+  # # shows x # vocab words
   td_matrix = vectorizer.fit_transform(df["all_text"])
 
+  # truncated SVD
   U, s, Vt = svds(td_matrix, k=k)
   order = np.argsort(-s)
   s = s[order]
   U = U[:, order]
   Vt = Vt[order, :]
 
+  # each vocab word has vector in latent space
   word_embeddings = Vt.T * s
   word_embeddings_normed = normalize(word_embeddings, axis=1)
 
   word_to_index = vectorizer.vocabulary_
   index_to_word = {i: t for t, i in word_to_index.items()}
+  # each show gets vector in latent space
   doc_matrix = td_matrix @ word_embeddings
   doc_matrix_normed = normalize(doc_matrix, axis=1)
 
@@ -41,21 +48,21 @@ def build_svd(k=50):
     "df": df,
   }
 
-# cosine similarity - keep k results
-def closest_words(word_in, svd, k = 10):
-  word_to_index = svd["word_to_index"]
-  index_to_word = svd["index_to_word"]
-  word_embeddings_normed = svd["word_embeddings_normed"]
+# # cosine similarity - keep k results
+# def closest_words(word_in, svd, k = 10):
+#   word_to_index = svd["word_to_index"]
+#   index_to_word = svd["index_to_word"]
+#   word_embeddings_normed = svd["word_embeddings_normed"]
 
-  if word_in not in word_to_index: return []
+#   if word_in not in word_to_index: return []
 
-  idx = word_to_index[word_in]
-  sims = word_embeddings_normed.dot(word_embeddings_normed[idx,:])
-  # sort highest sims to lowest
-  asort = np.argsort(-sims)[:k+1]
+#   idx = word_to_index[word_in]
+#   sims = word_embeddings_normed.dot(word_embeddings_normed[idx,:])
+#   # sort highest sims to lowest
+#   asort = np.argsort(-sims)[:k+1]
 
-  # removes query word and converts sims to floats
-  return [(index_to_word[i], float(sims[i])) for i in asort if i != idx][:k]
+#   # removes query word and converts sims to floats
+#   return [(index_to_word[i], float(sims[i])) for i in asort if i != idx][:k]
 
 def embed_text(text, svd, top_n_terms=None):
     """
@@ -96,45 +103,65 @@ def embed_text(text, svd, top_n_terms=None):
     return (q_latent / norm).ravel()
 
 
-def closest_words_to_text(text, svd, k=10, top_n_terms=None, exclude_query_words=True):
-    index_to_word = svd["index_to_word"]
-    word_embeddings_normed = svd["word_embeddings_normed"]
-    vectorizer = svd["vectorizer"]
+# def closest_words_to_text(text, svd, k=10, top_n_terms=None, exclude_query_words=True):
+#     """
+#     Embeds a whole senence into the latent space, compares query to every word
+#     embedding, and returns words that are closest to the whole sentence.
+#     """
+#     index_to_word = svd["index_to_word"]
+#     word_embeddings_normed = svd["word_embeddings_normed"]
+#     vectorizer = svd["vectorizer"]
 
-    tokens = preprocess.tokenize(text)
-    '''
-    # tokens = stem_list(tokens)
+#     tokens = preprocess.tokenize(text)
+#     # tokens = stem_list(tokens)
+#     preprocessed_query = " ".join(tokens)
+#     q_vec = embed_text(preprocessed_query, svd)
 
-    expansion = query_expansion(tokens)
-    expanded_tokens = list(tokens)
-    for token, (count, synonyms) in expansion.items():
-        expanded_tokens.extend(synonyms[:2])
+#     if q_vec is None:
+#         return []
 
-    preprocessed_query = " ".join(expanded_tokens)
-    '''
-    q_vec = embed_text(tokens, svd)
+#     sims = word_embeddings_normed.dot(q_vec)
+#     asort = np.argsort(-sims)
 
-    if q_vec is None:
-        return []
+#     query_words = set()
+#     if exclude_query_words:
+#         analyzer = vectorizer.build_analyzer()
+#         query_words = set(analyzer(text))
 
-    sims = word_embeddings_normed.dot(q_vec)
-    asort = np.argsort(-sims)
+#     results = []
+#     for i in asort:
+#         w = index_to_word[i]
+#         if exclude_query_words and w in query_words:
+#             continue
+#         results.append((w, float(sims[i])))
+#         if len(results) == k:
+#             break
 
-    query_words = set()
-    if exclude_query_words:
-        analyzer = vectorizer.build_analyzer()
-        query_words = set(analyzer(text))
+#     return results
 
-    results = []
-    for i in asort:
-        w = index_to_word[i]
-        if exclude_query_words and w in query_words:
-            continue
-        results.append((w, float(sims[i])))
-        if len(results) == k:
-            break
+def preprocess_query_for_svd(query, svd):
+    from preprocess import tokenize
 
-    return results
+    vocab = list(svd["word_to_index"].keys())
+
+    tokens = tokenize(query)
+    corrected = []
+
+    for token in tokens:
+        if token in svd["word_to_index"]:
+            corrected.append(token)
+        elif len(token) >= 5:
+            correction = spell_correction([token], None, None, vocab)
+
+            # Only use the correction if it is valid
+            if correction is None:
+                continue
+            elif isinstance(correction, list) and len(correction) > 0 and correction[0]:
+                corrected.append(correction[0])
+            elif isinstance(correction, str) and correction:
+                corrected.append(correction)
+
+    return " ".join(corrected)
 
 def svd_search(query, svd, df, top_k=20, genre_id=None, languages=None,
                rating=None, popularity=None, release_year=None):
@@ -142,17 +169,7 @@ def svd_search(query, svd, df, top_k=20, genre_id=None, languages=None,
     from preprocess import tokenize
 
     svd_df = svd["df"].reset_index(drop=True)
-    vocab = list(svd["word_to_index"].keys())
-
-    tokens = tokenize(query)
-    corrected = []
-    for token in tokens:
-        if token in svd["word_to_index"]:
-            corrected.append(token)
-        elif len(token) >= 5:
-            corrected.append(spell_correction([token], None, None, vocab)[0])
-
-    preprocessed_query = " ".join(corrected)
+    preprocessed_query = preprocess_query_for_svd(query, svd)
     q_vec = embed_text(preprocessed_query, svd)
     if q_vec is None:
         return []
@@ -161,14 +178,126 @@ def svd_search(query, svd, df, top_k=20, genre_id=None, languages=None,
     scores = np.array(doc_matrix_normed @ q_vec).ravel()
 
     top_pos = np.argsort(scores)[::-1][:top_k]
-    return [build_result(svd_df.iloc[i], scores[i])
-            for i in top_pos if scores[i] > 0.01]
+
+    results = []
+    for i in top_pos:
+        if scores[i] <= 0.01:
+            continue
+        result = build_result(svd_df.iloc[i], scores[i])
+        result["doc_idx"] = int(i)
+
+        explanation = explain_why_result_matched(query, result, svd)
+        result["keywords"] = get_user_facing_keywords(explanation)
+        
+        results.append(result)
+    return results
+
+def explain_dimension(svd, dim, top_n=8):
+    index_to_word = svd["index_to_word"]
+    word_embeddings = svd["word_embeddings"]
+
+    # weights of every vocab word on this latent dimension
+    weights = word_embeddings[:, dim]
+
+    # strongest positive and strongest negative words
+    pos_idx = np.argsort(-weights)[:top_n]
+    neg_idx = np.argsort(weights)[:top_n]
+
+    positive_words = [(index_to_word[i], float(weights[i])) for i in pos_idx]
+    negative_words = [(index_to_word[i], float(weights[i])) for i in neg_idx]
+
+    return {
+        "dimension": int(dim),
+        "positive_words": positive_words,
+        "negative_words": negative_words,
+    }
+
+def explain_why_result_matched(query, result, svd, top_dims=3, top_words=5):
+    preprocessed_query = preprocess_query_for_svd(query, svd)
+    q_vec = embed_text(preprocessed_query, svd)
+    if q_vec is None:
+        return None
+
+    doc_idx = result["doc_idx"]
+    doc_vec = np.asarray(svd["doc_matrix_normed"][doc_idx]).ravel()
+    doc_tokens = set(svd["df"].iloc[doc_idx]["all_tokens"])
+
+    # per-dimension contribution to the final cosine score
+    contrib = q_vec * doc_vec
+    top_idx = np.argsort(-np.abs(contrib))[:top_dims]
+
+    explanation = []
+    for d in top_idx:
+        weights = svd["word_embeddings"][:, d]
+        index_to_word = svd["index_to_word"]
+
+        pos_idx = np.argsort(-weights)[:top_words]
+        neg_idx = np.argsort(weights)[:top_words]
+
+        positive_words = [index_to_word[i] for i in pos_idx]
+        negative_words = [index_to_word[i] for i in neg_idx]
+
+        # use the side that query and document matched on
+        if q_vec[d] >= 0 and doc_vec[d] >= 0:
+            matched_words = [w for w in positive_words if w in doc_tokens]
+            side = "positive"
+        elif q_vec[d] < 0 and doc_vec[d] < 0:
+            matched_words = [w for w in negative_words if w in doc_tokens]
+            side = "negative"
+        else:
+            matched_words = []
+            side = "mixed"
+
+        explanation.append({
+            "dimension": int(d),
+            "side": side,
+            "query_activation": float(q_vec[d]),
+            "doc_activation": float(doc_vec[d]),
+            "contribution": float(contrib[d]),
+            "matched_words": matched_words,
+            "positive_words": positive_words,
+            "negative_words": negative_words,
+        })
+
+    return {
+        "title": result["title"],
+        "score": float(result["score"]),
+        "processed_query": preprocessed_query,
+        "dimensions": explanation,
+    }
+
+def get_user_facing_keywords(explanation, max_keywords=4):
+    """
+    Pull a short keyword list from explain_why_result_matched output.
+    Deduplicates while preserving importance order.
+    """
+    if explanation is None:
+        return []
+
+    keywords = []
+    seen = set()
+
+    for dim in explanation["dimensions"]:
+        for word in dim["matched_words"]:
+            if word not in seen:
+                seen.add(word)
+                keywords.append(word)
+            if len(keywords) == max_keywords:
+                return keywords
+
+    return keywords
 
 if __name__ == "__main__":
     svd = build_svd()
     df = preprocess.load_shows()
     query = input("Enter a word or sentence: ").strip()
 
+    results = svd_search(query, svd, df)
+
     print("\nTop shows:")
-    for result in svd_search(query, svd, df):
-        print(f"{result['title']}, {result['score']:.3f}")
+    for result in results[:5]:
+        explanation = explain_why_result_matched(query, result, svd)
+        keywords = get_user_facing_keywords(explanation)
+
+        print(result["title"])
+        print("Why this matched:", keywords)

@@ -2,20 +2,21 @@ import { useEffect } from 'react'
 
 interface ModalProps {
     show: {
-    title: string
-    description: string
-    language: string
-    popularity: number
-    rating: number
-    first_air_date: string
-    score: number
-    genre_ids: number[]
-    poster_path: string | null
-    origin_country: string[]
-    vote_count: number
-    reddit_posts: unknown[]
-    reddit_comments: unknown[]
-  } | null
+      title: string
+      description: string
+      language: string
+      popularity: number
+      rating: number
+      first_air_date: string
+      score: number
+      genre_ids: number[]
+      poster_path: string | null
+      origin_country: string[]
+      vote_count: number
+      reddit_posts: unknown[]
+      reddit_comments: unknown[]
+      keywords: string[]
+    } | null
   onClose: () => void
 }
 
@@ -100,6 +101,12 @@ export default function Modal({ show, onClose }: ModalProps) {
 
           <p className="modal-description">{show.description}</p>
 
+          {(show.keywords ?? []).length > 0 && (
+            <p className="modal-keywords">
+              Why this matched: <span>{show.keywords.join(', ')}</span>
+            </p>
+          )}
+          
           {(show.genre_ids ?? []).length > 0 && (
             <div className="modal-tags">
                 {(show.genre_ids ?? []).map((id) => (

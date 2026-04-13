@@ -38,6 +38,7 @@ interface ShowResult {
   vote_count: number
   reddit_posts: unknown[]
   reddit_comments: unknown[]
+  keywords: string[]
 }
 
 interface FilterOptions {
@@ -264,6 +265,7 @@ export default function App() {
                     similarity={parseFloat(show.score.toFixed(2))}
                     description={show.description}
                     tags={show.genre_ids?.map((id) => GENRE_MAP[id] ?? `Genre ${id}`).filter(Boolean) ?? [show.language?.toUpperCase()]}
+                    keywords={show.keywords ?? []}
                   />
                 </div>
               ))
