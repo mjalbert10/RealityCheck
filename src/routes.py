@@ -66,13 +66,8 @@ def register_routes(app):
             "release_year": [int(year_start), int(year_end)] if year_start and year_end else None,
         }
 
-        if model == "svd": 
-            results = svd_search(query, _svd, None, **kwargs) 
-            if not results: 
-                results = tfidf_search(query, **kwargs) 
-        else: 
-            results = tfidf_search(query, **kwargs)
-
+        results = svd_search(query, _svd, None, **kwargs) 
+        
         results.sort(key=lambda x: x["score"], reverse=True)
         return jsonify(results)
 
