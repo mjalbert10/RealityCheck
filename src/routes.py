@@ -1,8 +1,6 @@
 import os
 from flask import send_from_directory, request, jsonify
 from svd import svd_search
-from tfidf_search import tfidf_search, cosine_search
-
 
 def register_routes(app):
 
