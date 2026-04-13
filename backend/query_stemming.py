@@ -1,17 +1,10 @@
 import pandas as pd
 import re
 from nltk.stem import PorterStemmer
-from preprocess import tokenize
-# Stemmer
-stemmer = PorterStemmer()
+stemmer=PorterStemmer()
 
-def stem_list(tokens):
-    return [stemmer.stem(t) for t in tokens]
-
-# TODO: stem on query 
-# input: list of tokens that represent a query
-# output: stemmed list of tokens that represent a query
-def stem_input(tokens):
-    porter_stemmer = PorterStemmer()
-    stemmed_words = [porter_stemmer.stem(word) for word in tokens]
-    return stemmed_words
+# input: list of tokens
+# output: set of all stemmed tokens
+def stemmming(tokens): 
+    sent_words_lower_stemmed = [stemmer.stem(sent) for sent in tokens]
+    return set(sent_words_lower_stemmed)
