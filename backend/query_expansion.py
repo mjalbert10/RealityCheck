@@ -1,7 +1,7 @@
 import pandas as pd
 import re
 from pathlib import Path
-from nltk.corpus import wordnet
+# from nltk.corpus import wordnet
 import numpy as np
 
 # assumes query is a string but can change
@@ -34,6 +34,8 @@ def spell_correction(query, word1, word2, tokens):
                     m[l, g-1] + 1
                 )
         return m[i, j]
+    
+'''
     # candidate retrieval by going through inverted index tokens 
     def retrieve_corrected_words(word, tokens, max_dist = 2):
         result = []
@@ -70,3 +72,5 @@ def query_expansion(tokens):
             synonyms = []
         return hashedSynom
     return add_synonyms(tokens)
+
+    '''
