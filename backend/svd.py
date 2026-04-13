@@ -5,7 +5,7 @@ from scipy.sparse.linalg import svds
 from sklearn.preprocessing import normalize
 import preprocess
 
-def build_svd(k=200):
+def build_svd(k=50):
   df = preprocess.load_shows()
 
   df = df[df["all_tokens"].apply(len) > 2].copy()
@@ -26,12 +26,17 @@ def build_svd(k=200):
 
   word_to_index = vectorizer.vocabulary_
   index_to_word = {i: t for t, i in word_to_index.items()}
+  doc_matrix = td_matrix @ word_embeddings
+  doc_matrix_normed = normalize(doc_matrix, axis=1)
+
   return {
     "vectorizer": vectorizer,
     "word_to_index": word_to_index,
     "index_to_word": index_to_word,
     "word_embeddings": word_embeddings,
     "word_embeddings_normed": word_embeddings_normed,
+    "doc_matrix_normed": doc_matrix_normed,
+    "df": df,
   }
 
 # cosine similarity - keep k results
@@ -94,7 +99,9 @@ def closest_words_to_text(text, svd, k=10, top_n_terms=None, exclude_query_words
     word_embeddings_normed = svd["word_embeddings_normed"]
     vectorizer = svd["vectorizer"]
 
-    q_vec = embed_text(text, svd, top_n_terms=top_n_terms)
+    preprocessed_query = " ".join(preprocess.tokenize(query))
+    q_vec = embed_text(preprocessed_query, svd)
+
     if q_vec is None:
         return []
 
