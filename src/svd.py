@@ -5,7 +5,7 @@ from scipy.sparse.linalg import svds
 from sklearn.preprocessing import normalize
 import preprocess
 from query_expansion import query_expansion, spell_correction
-from query_stemming import stem_list
+# from query_stemming import stem_list
 
 def build_svd(k=50):
   df = preprocess.load_shows()
@@ -102,7 +102,7 @@ def closest_words_to_text(text, svd, k=10, top_n_terms=None, exclude_query_words
     vectorizer = svd["vectorizer"]
 
     tokens = preprocess.tokenize(text)
-    tokens = stem_list(tokens)
+    # tokens = stem_list(tokens)
 
     expansion = query_expansion(tokens)
     expanded_tokens = list(tokens)
