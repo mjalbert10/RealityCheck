@@ -4,7 +4,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from scipy.sparse.linalg import svds
 from sklearn.preprocessing import normalize
 import preprocess
-from query_expansion import query_expansion, spell_correction
+from query_expansion import spell_correction
 from query_stemming import stem_list
 
 def build_svd(k=50):
@@ -103,13 +103,7 @@ def closest_words_to_text(text, svd, k=10, top_n_terms=None, exclude_query_words
 
     tokens = preprocess.tokenize(text)
     tokens = stem_list(tokens)
-
-    expansion = query_expansion(tokens)
-    expanded_tokens = list(tokens)
-    for token, (count, synonyms) in expansion.items():
-        expanded_tokens.extend(synonyms[:2])
-
-    preprocessed_query = " ".join(expanded_tokens)
+    preprocessed_query = " ".join(tokens)
     q_vec = embed_text(preprocessed_query, svd)
 
     if q_vec is None:
