@@ -102,7 +102,7 @@ def closest_words_to_text(text, svd, k=10, top_n_terms=None, exclude_query_words
     vectorizer = svd["vectorizer"]
 
     tokens = preprocess.tokenize(text)
-    tokens = stem_list(tokens)
+    # tokens = stem_list(tokens)
 
     expansion = query_expansion(tokens)
     expanded_tokens = list(tokens)
