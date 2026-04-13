@@ -98,7 +98,7 @@ def build_all_tokens(row):
 
 def load_shows(): 
   """Creates a dataframe from tmdb.json"""
-  df = pd.read_json("dataset/tmdb.json")
+  df = pd.read_json("init.json")
 
   df = df.dropna(subset=["name", "overview"]).copy()
   df = df[df["overview"].astype(str).str.strip() != ""].reset_index(drop=True)
