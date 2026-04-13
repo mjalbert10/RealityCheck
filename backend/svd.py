@@ -4,6 +4,8 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from scipy.sparse.linalg import svds
 from sklearn.preprocessing import normalize
 import preprocess
+from query_expansion import query_expansion
+from query_stemming import stem_list
 
 def build_svd(k=50):
   df = preprocess.load_shows()
@@ -43,7 +45,7 @@ def build_svd(k=50):
 def closest_words(word_in, svd, k = 10):
   word_to_index = svd["word_to_index"]
   index_to_word = svd["index_to_word"]
-  word_embeddings_normed = svd["words_embeddings_normed"]
+  word_embeddings_normed = svd["word_embeddings_normed"]
 
   if word_in not in word_to_index: return []
 
@@ -99,7 +101,15 @@ def closest_words_to_text(text, svd, k=10, top_n_terms=None, exclude_query_words
     word_embeddings_normed = svd["word_embeddings_normed"]
     vectorizer = svd["vectorizer"]
 
-    preprocessed_query = " ".join(preprocess.tokenize(query))
+    tokens = preprocess.tokenize(text)
+    tokens = stem_list(tokens)
+
+    expansion = query_expansion(tokens)
+    expanded_tokens = list(tokens)
+    for token, (count, synonyms) in expansion.items():
+        expanded_tokens.extend(synonyms[:2])
+
+    preprocessed_query = " ".join(expanded_tokens)
     q_vec = embed_text(preprocessed_query, svd)
 
     if q_vec is None:
@@ -126,30 +136,23 @@ def closest_words_to_text(text, svd, k=10, top_n_terms=None, exclude_query_words
 
 def svd_search(query, svd, df, top_k=20, genre_id=None, languages=None,
                rating=None, popularity=None, release_year=None):
-    from tfidf_search import apply_filters, build_result
+    from tfidf_search import build_result
+    from preprocess import tokenize
 
-    q_vec = embed_text(query, svd)
+    # use the df that matches the doc_matrix
+    svd_df = svd["df"].reset_index(drop=True)
+
+    preprocessed_query = " ".join(tokenize(query))
+    q_vec = embed_text(preprocessed_query, svd)
     if q_vec is None:
         return []
 
-    # Build doc matrix from SVD word embeddings
-    word_embeddings = svd["word_embeddings"]
-    vectorizer = svd["vectorizer"]
+    doc_matrix_normed = svd["doc_matrix_normed"]
+    scores = np.array(doc_matrix_normed @ q_vec).ravel()
 
-    doc_texts = df["doc_text"].tolist()
-    doc_matrix = vectorizer.transform(doc_texts) @ word_embeddings
-    doc_norms = np.linalg.norm(doc_matrix, axis=1)
-
-    scores = np.zeros(len(df))
-    mask = doc_norms > 0
-    scores[mask] = doc_matrix[mask] @ q_vec / doc_norms[mask]
-
-    candidates = apply_filters(genre_id, languages, rating, popularity, release_year)
-    idx = candidates.index.to_numpy()
-
-    top_pos = np.argsort(scores[idx])[::-1][:top_k]
-    return [build_result(candidates.iloc[i], scores[idx[i]]) 
-            for i in top_pos if scores[idx[i]] > 0.01]
+    top_pos = np.argsort(scores)[::-1][:top_k]
+    return [build_result(svd_df.iloc[i], scores[i])
+            for i in top_pos if scores[i] > 0.01]
 
 
 if __name__ == "__main__":
