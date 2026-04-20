@@ -7,7 +7,7 @@ from preprocess import load_shows, tokenize
 
 BASE_DIR = Path(__file__).parent
 CACHE_PATH = BASE_DIR / "tfidf_cache.npz"
-MIN_DF = 50
+MIN_DF = 5
 
 df = load_shows()
 df = df[df["vote_average"] > 0]
@@ -48,13 +48,15 @@ if CACHE_PATH.exists():
     print("Loading cached matrices...")
     cache = np.load(CACHE_PATH, mmap_mode='r')
     cosine_matrix = cache["cosine_matrix"]
+    tfidf_matrix = cache["tfidf_matrix"]
 else:
     print("Building matrix (first run, will cache)...")
     cosine_matrix = np.stack(df["all_tokens"].apply(cosine_vectorize).values).astype(np.float32)
-    np.savez(CACHE_PATH, cosine_matrix=cosine_matrix)
+    tfidf_matrix = np.stack(df["all_tokens"].apply(tfidf_vectorize).values).astype(np.float32)
+    np.savez(CACHE_PATH, cosine_matrix=cosine_matrix, tfidf_matrix=tfidf_matrix)
 
 cosine_norms = np.linalg.norm(cosine_matrix, axis=1)
-print("Matrices ready.")
+tfidf_norms = np.linalg.norm(tfidf_matrix, axis=1)
 
 # ── Result builder ────────────────────────────────────────────────────────────
 def build_result(row, score):
@@ -129,7 +131,7 @@ def tfidf_search(query, top_k=5, genre_id=None, languages=None, rating=None,
                  popularity=None, release_year=None):
     candidates = apply_filters(genre_id, languages, rating, popularity, release_year)
     query_vec = tfidf_vectorize(tokenize(query))
-    return _search_with_matrix(cosine_matrix, cosine_norms, query_vec, candidates, top_k)
+    return _search_with_matrix(tfidf_matrix, tfidf_norms, query_vec, candidates, top_k)
 
 def cosine_search(query, top_k=5, genre_id=None, languages=None, rating=None,
                   popularity=None, release_year=None):
