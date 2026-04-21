@@ -71,12 +71,13 @@ def register_routes(app):
                 print("post results")
                 print(results)
                 # if results are empty, run fallback
-                if (len(results) == 0): 
+                if not results: 
                     results = tfidf_search(query)
+                    print("bruh" + results)
             except Exception as e:
                 print("SVD ERROR:", e)
                 results = []
-                
+
             # make sure it's always a list
             if not results:
                 results = []
