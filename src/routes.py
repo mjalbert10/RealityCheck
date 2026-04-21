@@ -68,10 +68,11 @@ def register_routes(app):
 
             try:
                 results = svd_search(query, _svd, [], **kwargs)
+                print("post results")
+                print(results)
             except Exception as e:
                 print("SVD ERROR:", e)
                 results = []
-
             # make sure it's always a list
             if not results:
                 results = []
@@ -81,10 +82,8 @@ def register_routes(app):
             for r in results:
                 if isinstance(r, dict):
                     clean_results.append(r)
-
             results = clean_results
-            
-            # if results are empty
+            # if results are empty, run fallback
             if (len(results) == 0): 
                 tfidf_search(query)
 
