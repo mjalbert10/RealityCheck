@@ -5,6 +5,7 @@ from scipy.sparse.linalg import svds
 from sklearn.preprocessing import normalize
 import preprocess
 from query_expansion import spell_correction
+from routes import tfidf_search
 # from query_stemming import stem_list
 
 def build_svd(k=50):
