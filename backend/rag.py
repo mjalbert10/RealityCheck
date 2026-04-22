@@ -62,9 +62,11 @@ def rewrite_query(user_query: str, client: LLMClient) -> str:
         {
             "role": "system",
             "content": (
-                "Rewrite the user's query for retrieval over TV show metadata and Reddit discussion text. "
-                "Keep it short, concrete, and focused on genre, themes, tone, and key concepts. "
-                "Do not answer the question. Return only the rewritten retrieval query."
+                "Rewrite the user's query into a concise search query of 4 to 6 keywords. "
+                "Focus on concrete TV show concepts like genre, format, and structure "
+                "(e.g., survival, competition, dating, elimination, contestants). "
+                "Avoid vague words like 'messy' or 'dramatic' unless combined with specific concepts. "
+                "Do not use full sentences. Return only the query."
             ),
         },
         {
@@ -172,7 +174,11 @@ def run_rag(user_query: str, client: LLMClient, top_k: int = 5):
 if __name__ == "__main__":
   query = input("Ask about reality shows: ").strip()
 
-  client = LLMClient(api_key=os.getenv("SPARK_API_KEY"))
+  api_key = os.getenv("SPARK_API_KEY")
+  if not api_key:
+     api_key = input("Enter your SPARK_API_KEY: ").strip()
+  
+  client = LLMClient(api_key=api_key)
 
   result = run_rag(query, client, top_k=5)
 
