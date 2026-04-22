@@ -172,28 +172,28 @@ def run_rag(user_query: str, client: LLMClient, top_k: int = 5):
   }
 
 if __name__ == "__main__":
-  query = input("Ask about reality shows: ").strip()
+    query = input("Ask about reality shows: ").strip()
 
-  api_key = os.getenv("SPARK_API_KEY")
-  if not api_key:
-     api_key = input("Enter your SPARK_API_KEY: ").strip()
-  
-  client = LLMClient(api_key=api_key)
+    print("key exists:", os.getenv("SPARK_API_KEY") is not None)
+    print("key length:", len(os.getenv("SPARK_API_KEY") or ""))
+    print("key prefix:", repr((os.getenv("SPARK_API_KEY") or "")[:8]))
+    
+    client = LLMClient(api_key=os.getenv("SPARK_API_KEY"))
 
-  result = run_rag(query, client, top_k=5)
+    result = run_rag(query, client, top_k=5)
 
-  print("\nOriginal query:")
-  print(result["original_query"])
+    print("\nOriginal query:")
+    print(result["original_query"])
 
-  print("\nRewritten retrieval query:")
-  print(result["retrieval_query"])
+    print("\nRewritten retrieval query:")
+    print(result["retrieval_query"])
 
-  print("\nRetrieved results:")
-  for i, h in enumerate(result["hits"], start=1):
-      print(f"{i}. score={h['score']:.4f} | {h.get('title', 'Untitled')[:80]}")
-      if "doc_idx" in h:
-          row = SVD_INDEX["df"].iloc[h["doc_idx"]]
-          print("   overview:", (row.get("overview", "") or "")[:150])
+    print("\nRetrieved results:")
+    for i, h in enumerate(result["hits"], start=1):
+        print(f"{i}. score={h['score']:.4f} | {h.get('title', 'Untitled')[:80]}")
+        if "doc_idx" in h:
+            row = SVD_INDEX["df"].iloc[h["doc_idx"]]
+            print("   overview:", (row.get("overview", "") or "")[:150])
 
-  print("\nLLM answer:")
-  print(result["answer"])
+    print("\nLLM answer:")
+    print(result["answer"])
