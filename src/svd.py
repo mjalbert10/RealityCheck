@@ -331,3 +331,62 @@ if __name__ == "__main__":
 
         print(result["title"])
         print("Why this matched:", keywords)
+
+def hybrid_search(query, svd, df, top_k=20, genre_id=None, languages=None,
+                  rating=None, popularity=None, release_year=None):
+
+    svd_results = svd_search(
+        query=query,
+        svd=svd,
+        df=df,
+        top_k=top_k,
+        genre_id=genre_id,
+        languages=languages,
+        rating=rating,
+        popularity=popularity,
+        release_year=release_year,
+    )
+
+    if svd_results:
+        for r in svd_results:
+            r["search_method"] = "svd"
+        return svd_results
+
+    tfidf_results = tfidf_search.tfidf_search(
+        query=query,
+        top_k=top_k,
+        genre_id=genre_id,
+        languages=languages,
+        rating=rating,
+        popularity=popularity,
+        release_year=release_year,
+    )
+
+    for r in tfidf_results:
+        r["search_method"] = "tfidf_fallback"
+    return tfidf_results
+
+if __name__ == "__main__":
+    svd = build_svd()
+    df = preprocess.load_shows()
+    query = input("Enter a word or sentence: ").strip()
+
+    results = hybrid_search(query, svd, df)
+
+    print("\nTop shows:")
+    for result in results[:5]:
+        explanation = explain_why_result_matched(query, result, svd)
+        keywords = get_user_facing_keywords(explanation)
+
+        print(result["title"])
+        print("Why this matched:", keywords)
+
+    print("query:", query)
+    print("in_svd_vocab:", "fire" in svd["word_to_index"])
+    print("processed_query:", preprocess_query_for_svd(query, svd))
+
+    svd_results = svd_search(query, svd, df)
+    print("svd_results:", len(svd_results))
+
+    tfidf_results = tfidf_search.tfidf_search(query=query, top_k=20)
+    print("tfidf_results:", len(tfidf_results))
