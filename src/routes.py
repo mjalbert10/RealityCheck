@@ -1,5 +1,5 @@
 import os
-from flask import app, send_from_directory, request, jsonify
+from flask import send_from_directory, request, jsonify
 from svd import build_svd, svd_search
 from tfidf_search import tfidf_search
 
@@ -48,7 +48,7 @@ def register_routes(app):
             if not query.strip():
                 return jsonify([])
 
-            model = request.args.get("model", "tfidf")
+            model = request.args.get("type", "tfidf")
             year_start = request.args.get("year_start", "")
             year_end = request.args.get("year_end", "")
             languages = request.args.get("language", "")
@@ -66,11 +66,14 @@ def register_routes(app):
                 "release_year": [int(year_start), int(year_end)] if year_start and year_end else None,
             }
 
-            try:
+            if model == "svd":
                 results = svd_search(query, _svd, [], **kwargs)
-            except Exception as e:
-                print("SVD ERROR:", e)
-                results = []
+            else:
+                # Default: TF-IDF
+                results = tfidf_search(query, **kwargs)
+                print("🔍 TFIDF raw results:", results[:2] if results else "EMPTY")
+                print("🔍 Types:", [type(r) for r in results[:3]] if results else "EMPTY")
+ 
 
             # make sure it's always a list
             if not results:

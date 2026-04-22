@@ -181,8 +181,38 @@ def svd_search(query, svd, df, top_k=20, genre_id=None, languages=None,
 
     results = []
     for i in top_pos:
+        row = svd_df.iloc[i]
+
+        # --- FILTERS ---
+        if genre_id:
+            if not isinstance(row["genre_ids"], list) or genre_id not in row["genre_ids"]:
+                continue
+
+        if languages:
+            if row["original_language"] not in languages:
+                continue
+
+        if rating:
+            if not (rating[0] <= row["vote_average"] <= rating[1]):
+                continue
+
+        if release_year:
+            year = int(str(row["first_air_date"])[:4]) if row["first_air_date"] else None
+            if not year or not (release_year[0] <= year <= release_year[1]):
+                continue
+
+        if popularity:
+            pop = row["popularity"]
+            if popularity == "low" and pop >= 10:
+                continue
+            elif popularity == "medium" and not (10 <= pop < 50):
+                continue
+            elif popularity == "high" and pop < 50:
+                continue
+
         if scores[i] <= 0.01:
             continue
+
         result = build_result(svd_df.iloc[i], scores[i])
         result["doc_idx"] = int(i)
 

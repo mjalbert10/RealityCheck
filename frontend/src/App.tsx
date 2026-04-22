@@ -54,6 +54,7 @@ export default function App() {
   const [results, setResults] = useState<ShowResult[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterOptions, setFilterOptions] = useState<FilterOptions | null>(null);
+  const [searchType, setSearchType] = useState('tfidf');
 
   // Filter states
   const [subgenre, setSubgenre] = useState('');
@@ -79,16 +80,21 @@ export default function App() {
       return;
     }
   
-    const params = new URLSearchParams({
-      q: searchQuery,
-      ...(subgenre && { subgenre }),
-      ...(yearRange.start && { year_start: yearRange.start }),
-      ...(yearRange.end && { year_end: yearRange.end }),
-      ...(language.length > 0 && { language: language.join(',') }),
-      ...(ratings.min && { rating_min: ratings.min }),
-      ...(ratings.max && { rating_max: ratings.max }),
-      ...(popularity && { popularity }),
-    });
+    const params = new URLSearchParams({ q: searchQuery });
+ 
+    // 'type' matches what the backend now reads
+    params.append('type', searchType);
+ 
+    if (subgenre)            params.append('subgenre', subgenre);
+    if (yearRange.start)     params.append('year_start', yearRange.start);
+    if (yearRange.end)       params.append('year_end', yearRange.end);
+    if (language.length > 0) params.append('language', language.join(','));
+    if (ratings.min !== '')  params.append('rating_min', ratings.min);
+    if (ratings.max !== '')  params.append('rating_max', ratings.max);
+    if (popularity)          params.append('popularity', popularity);
+ 
+    console.log('Search params:', params.toString());
+
 
     fetch(`/api/search?${params}`)
       .then((res) => res.json())
@@ -127,7 +133,7 @@ export default function App() {
 
               {/* Subgenre — dynamic from API */}
               <label>Type of Reality:</label>
-              <select onChange={(e) => setSubgenre(e.target.value)}>
+              <select value={subgenre} onChange={(e) => setSubgenre(e.target.value)}>
                 <option value="">All Genres</option>
                 {filterOptions?.genre_ids.map((id) => (
                   <option key={id} value={String(id)}>
@@ -145,6 +151,7 @@ export default function App() {
                   min={filterOptions?.years.min ?? '1900'}
                   max={filterOptions?.years.max ?? '2026'}
                   onChange={(e) => setYearRange({ ...yearRange, start: e.target.value })}
+                  value={yearRange.start}
                 />
                 <span>to</span>
                 <input
@@ -153,6 +160,7 @@ export default function App() {
                   min={filterOptions?.years.min ?? '1900'}
                   max={filterOptions?.years.max ?? '2026'}
                   onChange={(e) => setYearRange({ ...yearRange, end: e.target.value })}
+                  value={yearRange.end}
                 />
               </div>
 
@@ -164,6 +172,7 @@ export default function App() {
                     <input
                       type="checkbox"
                       value={lang}
+                      checked={language.includes(lang)}
                       onChange={(e) => {
                         setLanguage(e.target.checked
                           ? [...language, lang]
@@ -187,6 +196,7 @@ export default function App() {
                   min={filterOptions?.ratings.min ?? 0}
                   max={filterOptions?.ratings.max ?? 10}
                   step="0.1"
+                  value={ratings.min}
                   onChange={(e) => setRatings({ ...ratings, min: e.target.value })}
                 />
                 <p>to</p>
@@ -196,6 +206,7 @@ export default function App() {
                   min={filterOptions?.ratings.min ?? 0}
                   max={filterOptions?.ratings.max ?? 10}
                   step="0.1"
+                  value={ratings.max}
                   onChange={(e) => setRatings({ ...ratings, max: e.target.value })}
                 />
               </div>
@@ -207,6 +218,7 @@ export default function App() {
                   <label key={val} className="options">
                     <input
                       type="radio"
+                      checked={popularity === val}
                       name="traffic"
                       value={val}
                       onChange={(e) => setPopularity(e.target.value)}
@@ -244,6 +256,20 @@ export default function App() {
             <button className="filter-button" onClick={toggleFilters}>
               {filtersOn ? 'Hide Filters' : 'Show Filters'}
             </button>
+            <div className="radio-group">
+              {(['tfidf', 'svd'] as const).map((val) => (
+                <label key={val} className="options">
+                  <input
+                    type="radio"
+                    name="searchType"
+                    value={val}
+                    checked={searchType === val}
+                    onChange={(e) => setSearchType(e.target.value as 'tfidf' | 'svd')}
+                  />
+                  {' '}{val.toUpperCase()}
+                </label>
+              ))}
+            </div>
           </div>
 
           <h2 className="titles">Search Results</h2>
