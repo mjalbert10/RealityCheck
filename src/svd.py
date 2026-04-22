@@ -5,6 +5,7 @@ from scipy.sparse.linalg import svds
 from sklearn.preprocessing import normalize
 import preprocess
 from query_expansion import spell_correction
+import tfidf_search
 # from query_stemming import stem_list
 
 def build_svd(k=50):
@@ -17,7 +18,7 @@ def build_svd(k=50):
   df["all_text"] = df["all_tokens"].apply(lambda toks: " ".join(toks))
     
   vectorizer = TfidfVectorizer(stop_words = 'english', max_df = .7, 
-                              min_df = 30)
+                              min_df = 3)
   # # shows x # vocab words
   td_matrix = vectorizer.fit_transform(df["all_text"])
 
@@ -150,7 +151,7 @@ def preprocess_query_for_svd(query, svd):
     for token in tokens:
         if token in svd["word_to_index"]:
             corrected.append(token)
-        elif len(token) >= 5:
+        elif len(token) >= 3:
             correction = spell_correction([token], None, None, vocab)
 
             # Only use the correction if it is valid
@@ -181,45 +182,12 @@ def svd_search(query, svd, df, top_k=20, genre_id=None, languages=None,
 
     results = []
     for i in top_pos:
-        row = svd_df.iloc[i]
-
-        # --- FILTERS ---
-        if genre_id:
-            if not isinstance(row["genre_ids"], list) or genre_id not in row["genre_ids"]:
-                continue
-
-        if languages:
-            if row["original_language"] not in languages:
-                continue
-
-        if rating:
-            if not (rating[0] <= row["vote_average"] <= rating[1]):
-                continue
-
-        if release_year:
-            year = int(str(row["first_air_date"])[:4]) if row["first_air_date"] else None
-            if not year or not (release_year[0] <= year <= release_year[1]):
-                continue
-
-        if popularity:
-            pop = row["popularity"]
-            if popularity == "low" and pop >= 10:
-                continue
-            elif popularity == "medium" and not (10 <= pop < 50):
-                continue
-            elif popularity == "high" and pop < 50:
-                continue
-
         if scores[i] <= 0.01:
             continue
-
         result = build_result(svd_df.iloc[i], scores[i])
         result["doc_idx"] = int(i)
-
-        explanation = explain_why_result_matched(query, result, svd)
-        result["keywords"] = get_user_facing_keywords(explanation)
-        
         results.append(result)
+
     return results
 
 def explain_dimension(svd, dim, top_n=8):
@@ -317,12 +285,46 @@ def get_user_facing_keywords(explanation, max_keywords=4):
 
     return keywords
 
+def hybrid_search(query, svd, df, top_k=20, genre_id=None, languages=None,
+                  rating=None, popularity=None, release_year=None):
+
+    svd_results = svd_search(
+        query=query,
+        svd=svd,
+        df=df,
+        top_k=top_k,
+        genre_id=genre_id,
+        languages=languages,
+        rating=rating,
+        popularity=popularity,
+        release_year=release_year,
+    )
+
+    if svd_results:
+        for r in svd_results:
+            r["search_method"] = "svd"
+        return svd_results
+
+    tfidf_results = tfidf_search.tfidf_search(
+        query=query,
+        top_k=top_k,
+        genre_id=genre_id,
+        languages=languages,
+        rating=rating,
+        popularity=popularity,
+        release_year=release_year,
+    )
+
+    for r in tfidf_results:
+        r["search_method"] = "tfidf_fallback"
+    return tfidf_results
+
 if __name__ == "__main__":
     svd = build_svd()
     df = preprocess.load_shows()
     query = input("Enter a word or sentence: ").strip()
 
-    results = svd_search(query, svd, df)
+    results = hybrid_search(query, svd, df)
 
     print("\nTop shows:")
     for result in results[:5]:
@@ -331,3 +333,13 @@ if __name__ == "__main__":
 
         print(result["title"])
         print("Why this matched:", keywords)
+
+    print("query:", query)
+    print("in_svd_vocab:", "fire" in svd["word_to_index"])
+    print("processed_query:", preprocess_query_for_svd(query, svd))
+
+    svd_results = svd_search(query, svd, df)
+    print("svd_results:", len(svd_results))
+
+    tfidf_results = tfidf_search.tfidf_search(query=query, top_k=20)
+    print("tfidf_results:", len(tfidf_results))

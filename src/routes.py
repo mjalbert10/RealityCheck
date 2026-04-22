@@ -2,8 +2,11 @@ import os
 from flask import send_from_directory, request, jsonify
 from svd import build_svd, svd_search
 from tfidf_search import tfidf_search
+from rag import generate_answer, rewrite_query, retrieve_hits
+from infosci_spark_client import LLMClient
 
 _svd = build_svd()
+_client = LLMClient(api_key=os.getenv("SPARK_API_KEY"))
 
 def register_routes(app):
 
@@ -66,13 +69,17 @@ def register_routes(app):
                 "release_year": [int(year_start), int(year_end)] if year_start and year_end else None,
             }
 
+            finQuery = rewrite_query(query, _client)
+
             if model == "svd":
-                results = svd_search(query, _svd, [], **kwargs)
+                results = svd_search(finQuery, _svd, [], **kwargs)
             else:
                 # Default: TF-IDF
-                results = tfidf_search(query, **kwargs)
+                results = tfidf_search(finQuery, **kwargs)
  
-
+            rag_hits = retrieve_hits(finQuery, top_k=5)
+            answer = generate_answer(query, finQuery, rag_hits, _client)
+        
             # make sure it's always a list
             if not results:
                 results = []
@@ -86,7 +93,7 @@ def register_routes(app):
             # safe sort
             results.sort(key=lambda x: x.get("score", 0), reverse=True)
 
-            return jsonify(results)
+            return jsonify({"results": results, "answer": answer})
 
         except Exception as e:
             print("🔥 SEARCH ERROR:", e)

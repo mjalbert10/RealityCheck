@@ -93,14 +93,11 @@ export default function App() {
     if (ratings.max !== '')  params.append('rating_max', ratings.max);
     if (popularity)          params.append('popularity', popularity);
  
-    console.log('Search params:', params.toString());
-
 
     fetch(`/api/search?${params}`)
       .then((res) => res.json())
       .then((data) => {
-        console.log('Results:', data.map((s: ShowResult) => s.title));
-        setResults(data);
+        setResults(data.results);
       })
       .catch((err) => console.error('Search failed:', err));
     };
