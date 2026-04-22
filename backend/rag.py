@@ -8,7 +8,7 @@ from svd import (
 
 # Build once at startup, not on every query
 SVD_INDEX = build_svd(k=50)
-DF = SVD_INDEX["df"]
+SHOW_DF = SVD_INDEX["df"]
 
 
 def row_to_context(row) -> str:
@@ -18,153 +18,171 @@ def row_to_context(row) -> str:
   """
   title = row.get("title", "") or row.get("name", "") or "Untitled"
   overview = row.get("overview", "") or ""
-  tokens = " ".join(row.get("all_tokens", []))
 
   reddit_posts = row.get("reddit_posts", []) or []
   reddit_comments = row.get("reddit_comments", []) or []
 
-  post_text = " ".join(
-    f"{p.get('title', '')} {p.get('text', '')}".strip()
-    for p in reddit_posts
-    if isinstance(p, dict)
-  )
+  post_snippets = []
+  for p in reddit_posts[:2]:
+      if isinstance(p, dict):
+          text = f"{p.get('title', '')} {p.get('text', '')}".strip()
+          if text:
+              post_snippets.append(text[:300])
 
-  comment_text = " ".join(
-    c.get("text", "")
-    for c in reddit_comments
-    if isinstance(c, dict)
-  )
+  comment_snippets = []
+  for c in reddit_comments[:3]:
+      if isinstance(c, dict):
+          text = c.get("text", "")
+          if text:
+              comment_snippets.append(text[:200])
 
-  parts = [
-    f"Title: {title}",
-    f"Overview: {overview}",
-    f"Tokens: {tokens}",
-  ]
+  parts = [f"Title: {title}"]
 
-  if post_text:
-    parts.append(f"Reddit posts: {post_text}")
-  if comment_text:
-    parts.append(f"Reddit comments: {comment_text}")
+  if overview:
+      parts.append(f"Overview: {overview}")
+
+  if post_snippets:
+      parts.append("Reddit posts: " + " | ".join(post_snippets))
+
+  if comment_snippets:
+      parts.append("Reddit comments: " + " | ".join(comment_snippets))
 
   return "\n".join(parts)
 
 
-def retrieve_for_rag(query: str, top_k: int = 5):
-  """
-  Retrieve documents using YOUR existing SVD pipeline
-  and build one context string for the LLM.
-  """
-  hits = hybrid_search(query=query, svd=SVD_INDEX, df=DF, top_k=top_k)
-
-  blocks = []
-  for rank, hit in enumerate(hits, start=1):
-    title = hit.get("title", "Untitled")
-    score = hit.get("score", 0.0)
-    method = hit.get("search_method", "unknown")
-
-    block_lines = [
-      f"### [{rank}] {title}",
-      f"score: {score:.4f}",
-      f"search_method: {method}",
-    ]
-
-    # SVD hits from your code include doc_idx
-    doc_idx = hit.get("doc_idx")
-    if doc_idx is not None:
-      row = SVD_INDEX["df"].iloc[doc_idx]
-
-      explanation = explain_why_result_matched(query, hit, SVD_INDEX)
-      keywords = get_user_facing_keywords(explanation)
-
-      if keywords:
-        block_lines.append("matched_keywords: " + ", ".join(keywords))
-
-      block_lines.append("")
-      block_lines.append(row_to_context(row))
-    else:
-      # TF-IDF fallback path
-      block_lines.append("")
-      block_lines.append(hit.get("overview", "") or hit.get("text", ""))
-
-    blocks.append("\n".join(block_lines))
-
-  context = "\n\n---\n\n".join(blocks)
-  return hits, context
-
-
-def run_rag(user_query: str, client: LLMClient):
-  hits, ctx = retrieve_for_rag(user_query, top_k=5)
-
-  prompt = [
-    {
-      "role": "system",
-      "content": (
-        "You are answering questions using only the retrieved show data below. "
-        "If the answer is not supported by the retrieved context, say so."
-      ),
-    },
-    {
-      "role": "user",
-      "content": f"Question:\n{user_query}\n\nRetrieved context:\n\n{ctx}",
-  },
-]
-
-  return client.chat(prompt, stream=False, show_thinking=False)
-
 def rewrite_query(user_query: str, client: LLMClient) -> str:
+  """
+  Use LLM to rewrite the user's query into a short retrieval query.
+  """
   prompt = [
-    {
-      "role": "system",
-      "content": (
-        "Rewrite the user's query for retrieval. "
-        "Keep it short, concrete, and focused on key entities and concepts. "
-        "Return only the rewritten query."
-        ),
-    },
-    {
-      "role": "user",
-      "content": user_query,
-    },
-  ]
-
+        {
+            "role": "system",
+            "content": (
+                "Rewrite the user's query for retrieval over TV show metadata and Reddit discussion text. "
+                "Keep it short, concrete, and focused on genre, themes, tone, and key concepts. "
+                "Do not answer the question. Return only the rewritten retrieval query."
+            ),
+        },
+        {
+            "role": "user",
+            "content": user_query,
+        },
+    ]
   response = client.chat(prompt, stream=False, show_thinking=False)
   return response["content"].strip()
 
+def build_context_from_hits(retrieval_query: str, hits, svd_index) -> str:
+  """
+    Build the exact context that will be passed to the LLM from the same hits shown to the user.
+  """
+  blocks = []
 
-def run_rag_modified_query(user_query: str, client: LLMClient):
-  modified_query = rewrite_query(user_query, client)
-  hits, ctx = retrieve_for_rag(modified_query, top_k=5)
+  for rank, hit in enumerate(hits, start=1):
+      title = hit.get("title", "Untitled")
+      score = hit.get("score", 0.0)
+      method = hit.get("search_method", "unknown")
+
+      block_lines = [
+          f"### Result {rank}: {title}",
+          f"Score: {score:.4f}",
+          f"Search method: {method}",
+      ]
+
+      doc_idx = hit.get("doc_idx")
+      if doc_idx is not None:
+          row = svd_index["df"].iloc[doc_idx]
+
+          try:
+              explanation = explain_why_result_matched(retrieval_query, hit, svd_index)
+              keywords = get_user_facing_keywords(explanation)
+              if keywords:
+                  block_lines.append("Why it matched: " + ", ".join(keywords))
+          except Exception:
+              pass
+
+          block_lines.append("")
+          block_lines.append(row_to_context(row))
+      else:
+          overview = hit.get("overview", "") or hit.get("text", "") or ""
+          if overview:
+              block_lines.append("")
+              block_lines.append(overview)
+
+      blocks.append("\n".join(block_lines))
+
+  return "\n\n---\n\n".join(blocks)
+
+def retrieve_hits(retrieval_query: str, top_k: int = 5):
+  """
+    Retrieve hits that
+    1. display in the app
+    2. are used for the LLM context
+    """
+  return hybrid_search(query=retrieval_query, svd=SVD_INDEX, df=SHOW_DF, top_k=top_k)
+
+def generate_answer(user_query: str, retrieval_query: str, hits, client: LLMClient) -> str:
+  """
+  Generate an answer using only the retrieved hits.
+  """
+  context = build_context_from_hits(retrieval_query, hits, SVD_INDEX)
 
   prompt = [
-    {
-      "role": "system",
-      "content": (
-        "You are answering questions using only the retrieved show data below. "
-        "If the answer is not supported by the retrieved context, say so."
-      ),
-  },
-    {
-      "role": "user",
-      "content": (
-        f"Original question:\n{user_query}\n\n"
-        f"Retrieval query:\n{modified_query}\n\n"
-        f"Retrieved context:\n\n{ctx}"
-      ),
-    },
+      {
+          "role": "system",
+          "content": (
+              "You are a helpful assistant for a TV recommendation system. "
+              "Answer using only the retrieved results below. "
+              "Recommend shows only if they are supported by the retrieved context. "
+              "When useful, mention which retrieved shows best match the user's request and why. "
+              "If the retrieved context is weak or insufficient, say that clearly."
+          ),
+      },
+      {
+          "role": "user",
+          "content": (
+              f"Original user question:\n{user_query}\n\n"
+              f"Retrieval query used by the IR system:\n{retrieval_query}\n\n"
+              f"Retrieved results:\n\n{context}"
+          ),
+      },
   ]
+  response = client.chat(prompt, stream=False, show_thinking=False)
+  return response["content"].strip()
 
-  return client.chat(prompt, stream=False, show_thinking=False)
+def run_rag(user_query: str, client: LLMClient, top_k: int = 5):
+  """ 
+  Full RAG pipeline: user query -> rewritten query -> retrieval -> displayed hits + LLM answer
+  """
+
+  retrieval_query = rewrite_query(user_query, client)
+  hits = retrieve_hits(retrieval_query, top_k=top_k)
+  answer = generate_answer(user_query, retrieval_query, hits, client)
+
+  return {
+      "original_query": user_query,
+      "retrieval_query": retrieval_query,
+      "hits": hits,
+      "answer": answer,
+  }
 
 if __name__ == "__main__":
   query = input("ask abt reality shows: ").strip()
   client = LLMClient()
-  answer = run_rag_modified_query(query, client)
-  results = hybrid_search(query, SVD_INDEX, DF, top_k=5)
 
-  for i, h in enumerate(results, start=1):
-    print(f"{i}. score={h['score']:.4f} | {h['title'][:60]}")
+  result = run_rag(query, client, top_k=5)
 
-    # if you want the underlying dataframe row
-    if "doc_idx" in h:
-      row = SVD_INDEX["df"].iloc[h["doc_idx"]]
-      print("   overview:", row.get("overview", "")[:120])
+  print("\nOriginal query:")
+  print(result["original_query"])
+
+  print("\nRewritten retrieval query:")
+  print(result["retrieval_query"])
+
+  print("\nRetrieved results:")
+  for i, h in enumerate(result["hits"], start=1):
+      print(f"{i}. score={h['score']:.4f} | {h.get('title', 'Untitled')[:80]}")
+      if "doc_idx" in h:
+          row = SVD_INDEX["df"].iloc[h["doc_idx"]]
+          print("   overview:", (row.get("overview", "") or "")[:150])
+
+  print("\nLLM answer:")
+  print(result["answer"])
