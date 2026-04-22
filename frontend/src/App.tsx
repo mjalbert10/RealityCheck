@@ -52,6 +52,7 @@ interface FilterOptions {
 export default function App() {
   const [filtersOn, setFiltersOn] = useState(true);
   const [results, setResults] = useState<ShowResult[]>([]);
+  const [ragOverview, setRagOverview] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterOptions, setFilterOptions] = useState<FilterOptions | null>(null);
   const [searchType, setSearchType] = useState('tfidf');
@@ -98,6 +99,7 @@ export default function App() {
       .then((res) => res.json())
       .then((data) => {
         setResults(data.results);
+        setRagOverview(data.answer);
       })
       .catch((err) => console.error('Search failed:', err));
     };
@@ -270,6 +272,8 @@ export default function App() {
           </div>
 
           <h2 className="titles">Search Results</h2>
+
+          <p>{ragOverview}</p>
 
           <div className="results-list">
             {results.length === 0 ? (
