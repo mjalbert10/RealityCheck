@@ -71,20 +71,16 @@ def register_routes(app):
             else:
                 # Default: TF-IDF
                 results = tfidf_search(query, **kwargs)
-                print("🔍 TFIDF raw results:", results[:2] if results else "EMPTY")
-                print("🔍 Types:", [type(r) for r in results[:3]] if results else "EMPTY")
  
 
             # make sure it's always a list
             if not results:
                 results = []
-
             # remove bad entries
             clean_results = []
             for r in results:
                 if isinstance(r, dict):
                     clean_results.append(r)
-
             results = clean_results
 
             # safe sort
