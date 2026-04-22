@@ -15,6 +15,8 @@ DOMAIN_STOPWORDS = {
 
 STOPWORDS = BASE_STOPWORDS | DOMAIN_STOPWORDS
 
+BASE_DIR = Path(__file__).resolve().parent
+
 def tokenize(text):
     if pd.isna(text):
       return []
@@ -98,7 +100,9 @@ def build_all_tokens(row):
 
 def load_shows(): 
   """Creates a dataframe from tmdb.json"""
-  df = pd.read_json("dataset/tmdb.json")
+  TMDB_PATH = BASE_DIR / "dataset" / "tmdb.json"
+  
+  df = pd.read_json(TMDB_PATH)
 
   df = df.dropna(subset=["name", "overview"]).copy()
   df = df[df["overview"].astype(str).str.strip() != ""].reset_index(drop=True)

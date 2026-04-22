@@ -5,6 +5,10 @@ from svd import (
   explain_why_result_matched,
   get_user_facing_keywords,
 )
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
 
 # Build once at startup, not on every query
 SVD_INDEX = build_svd(k=50)
@@ -166,8 +170,9 @@ def run_rag(user_query: str, client: LLMClient, top_k: int = 5):
   }
 
 if __name__ == "__main__":
-  query = input("ask abt reality shows: ").strip()
-  client = LLMClient()
+  query = input("Ask about reality shows: ").strip()
+
+  client = LLMClient(api_key=os.getenv("SPARK_API_KEY"))
 
   result = run_rag(query, client, top_k=5)
 
