@@ -62,10 +62,9 @@ def rewrite_query(user_query: str, client: LLMClient) -> str:
         {
             "role": "system",
             "content": (
-                "Rewrite the user's query into a concise search query of 4 to 6 keywords. "
-                "Focus on concrete TV show concepts like genre, format, and structure "
-                "(e.g., survival, competition, dating, elimination, contestants). "
-                "Avoid vague words like 'messy' or 'dramatic' unless combined with specific concepts. "
+                "Rewrite the user's query into a concise search query of up to 10 keywords. "
+                "Convert vague or descriptive language into specific concepts used in TV show descriptions. "
+                "Do not reuse vague adjectives unless necessary. "
                 "Do not use full sentences. Return only the query."
             ),
         },
@@ -174,10 +173,6 @@ def run_rag(user_query: str, client: LLMClient, top_k: int = 5):
 if __name__ == "__main__":
     query = input("Ask about reality shows: ").strip()
 
-    print("key exists:", os.getenv("SPARK_API_KEY") is not None)
-    print("key length:", len(os.getenv("SPARK_API_KEY") or ""))
-    print("key prefix:", repr((os.getenv("SPARK_API_KEY") or "")[:8]))
-    
     client = LLMClient(api_key=os.getenv("SPARK_API_KEY"))
 
     result = run_rag(query, client, top_k=5)

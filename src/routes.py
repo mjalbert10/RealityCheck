@@ -2,7 +2,7 @@ import os
 from flask import send_from_directory, request, jsonify
 from svd import build_svd, svd_search
 from tfidf_search import tfidf_search
-from rag import generate_answer, run_rag, rewrite_query, retrieve_hits
+from rag import generate_answer, rewrite_query, retrieve_hits
 from infosci_spark_client import LLMClient
 
 _svd = build_svd()
