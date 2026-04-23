@@ -103,6 +103,43 @@ def embed_text(text, svd, top_n_terms=None):
 
     return (q_latent / norm).ravel()
 
+
+# def closest_words_to_text(text, svd, k=10, top_n_terms=None, exclude_query_words=True):
+#     """
+#     Embeds a whole senence into the latent space, compares query to every word
+#     embedding, and returns words that are closest to the whole sentence.
+#     """
+#     index_to_word = svd["index_to_word"]
+#     word_embeddings_normed = svd["word_embeddings_normed"]
+#     vectorizer = svd["vectorizer"]
+
+#     tokens = preprocess.tokenize(text)
+#     # tokens = stem_list(tokens)
+#     preprocessed_query = " ".join(tokens)
+#     q_vec = embed_text(preprocessed_query, svd)
+
+#     if q_vec is None:
+#         return []
+
+#     sims = word_embeddings_normed.dot(q_vec)
+#     asort = np.argsort(-sims)
+
+#     query_words = set()
+#     if exclude_query_words:
+#         analyzer = vectorizer.build_analyzer()
+#         query_words = set(analyzer(text))
+
+#     results = []
+#     for i in asort:
+#         w = index_to_word[i]
+#         if exclude_query_words and w in query_words:
+#             continue
+#         results.append((w, float(sims[i])))
+#         if len(results) == k:
+#             break
+
+#     return results
+
 def preprocess_query_for_svd(query, svd):
     from preprocess import tokenize
 
@@ -173,6 +210,81 @@ def explain_dimension(svd, dim, top_n=8):
         "negative_words": negative_words,
     }
 
+def explain_why_result_matched(query, result, svd, top_dims=3, top_words=5):
+    preprocessed_query = preprocess_query_for_svd(query, svd)
+    q_vec = embed_text(preprocessed_query, svd)
+    if q_vec is None:
+        return None
+
+    doc_idx = result["doc_idx"]
+    doc_vec = np.asarray(svd["doc_matrix_normed"][doc_idx]).ravel()
+    doc_tokens = set(svd["df"].iloc[doc_idx]["all_tokens"])
+
+    # per-dimension contribution to the final cosine score
+    contrib = q_vec * doc_vec
+    top_idx = np.argsort(-np.abs(contrib))[:top_dims]
+
+    explanation = []
+    for d in top_idx:
+        weights = svd["word_embeddings"][:, d]
+        index_to_word = svd["index_to_word"]
+
+        pos_idx = np.argsort(-weights)[:top_words]
+        neg_idx = np.argsort(weights)[:top_words]
+
+        positive_words = [index_to_word[i] for i in pos_idx]
+        negative_words = [index_to_word[i] for i in neg_idx]
+
+        # use the side that query and document matched on
+        if q_vec[d] >= 0 and doc_vec[d] >= 0:
+            matched_words = [w for w in positive_words if w in doc_tokens]
+            side = "positive"
+        elif q_vec[d] < 0 and doc_vec[d] < 0:
+            matched_words = [w for w in negative_words if w in doc_tokens]
+            side = "negative"
+        else:
+            matched_words = []
+            side = "mixed"
+
+        explanation.append({
+            "dimension": int(d),
+            "side": side,
+            "query_activation": float(q_vec[d]),
+            "doc_activation": float(doc_vec[d]),
+            "contribution": float(contrib[d]),
+            "matched_words": matched_words,
+            "positive_words": positive_words,
+            "negative_words": negative_words,
+        })
+
+    return {
+        "title": result["title"],
+        "score": float(result["score"]),
+        "processed_query": preprocessed_query,
+        "dimensions": explanation,
+    }
+
+def get_user_facing_keywords(explanation, max_keywords=4):
+    """
+    Pull a short keyword list from explain_why_result_matched output.
+    Deduplicates while preserving importance order.
+    """
+    if explanation is None:
+        return []
+
+    keywords = []
+    seen = set()
+
+    for dim in explanation["dimensions"]:
+        for word in dim["matched_words"]:
+            if word not in seen:
+                seen.add(word)
+                keywords.append(word)
+            if len(keywords) == max_keywords:
+                return keywords
+
+    return keywords
+
 def hybrid_search(query, svd, df, top_k=20, genre_id=None, languages=None,
                   rating=None, popularity=None, release_year=None):
 
@@ -207,57 +319,6 @@ def hybrid_search(query, svd, df, top_k=20, genre_id=None, languages=None,
         r["search_method"] = "tfidf_fallback"
     return tfidf_results
 
-def top_dimensions(query, result, svd, top_k_dims=5, top_words=6):
-    preprocessed_query = preprocess_query_for_svd(query, svd)
-    q_vec = embed_text(preprocessed_query, svd)
-    if q_vec is None:
-        return None
-
-    doc_idx = result["doc_idx"]
-    doc_vec = np.asarray(svd["doc_matrix_normed"][doc_idx]).ravel()
-
-    contrib = q_vec * doc_vec
-    top_idx = np.argsort(-np.abs(contrib))[:top_k_dims]
-
-    index_to_word = svd["index_to_word"]
-    word_embeddings = svd["word_embeddings"]
-
-    dimensions = []
-    for d in top_idx:
-        weights = word_embeddings[:, d]
-
-        pos_idx = np.argsort(-weights)[:top_words]
-        neg_idx = np.argsort(weights)[:top_words]
-
-        positive_words = [index_to_word[i] for i in pos_idx]
-        negative_words = [index_to_word[i] for i in neg_idx]
-
-        if q_vec[d] >= 0 and doc_vec[d] >= 0:
-            side = "positive"
-            active_words = positive_words
-        elif q_vec[d] < 0 and doc_vec[d] < 0:
-            side = "negative"
-            active_words = negative_words
-        else:
-            side = "mixed"
-            active_words = positive_words + negative_words
-
-        dimensions.append({
-            "dimension": int(d),
-            "side": side,
-            "contribution": float(contrib[d]),
-            "dimension_words": active_words
-        })
-
-    return {
-        "title": result["title"],
-        "score": float(result["score"]),
-        "processed_query": preprocessed_query,
-        "query_vector": q_vec.tolist(),
-        "doc_vector": doc_vec.tolist(),
-        "dimensions": dimensions,
-    }
-
 if __name__ == "__main__":
     svd = build_svd()
     df = preprocess.load_shows()
@@ -266,17 +327,19 @@ if __name__ == "__main__":
     results = hybrid_search(query, svd, df)
 
     print("\nTop shows:")
-    for result in results[:10]:
-        explanation = top_dimensions(
-        query, result, svd, top_k_dims=5, top_words=6
-    )
+    for result in results[:5]:
+        explanation = explain_why_result_matched(query, result, svd)
+        keywords = get_user_facing_keywords(explanation)
 
-    print(result["title"])
-    print("score:", result["score"])
-    # print("query vector:", explanation["query_vector"])
-    # print("doc vector:", explanation["doc_vector"])
+        print(result["title"])
+        print("Why this matched:", keywords)
 
-    for dim in explanation["dimensions"]:
-        print(f"  dimension {dim['dimension']} ({dim['side']})")
-        print(f"    words: {', '.join(dim['dimension_words'])}")
-    print()
+    print("query:", query)
+    print("in_svd_vocab:", "fire" in svd["word_to_index"])
+    print("processed_query:", preprocess_query_for_svd(query, svd))
+
+    svd_results = svd_search(query, svd, df)
+    print("svd_results:", len(svd_results))
+
+    tfidf_results = tfidf_search.tfidf_search(query=query, top_k=20)
+    print("tfidf_results:", len(tfidf_results))
