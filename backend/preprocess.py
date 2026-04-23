@@ -57,7 +57,7 @@ def jaccard_sim(tokens1, tokens2):
 def filter_reddit(name, overview, reddit_posts, reddit_comments, tokenize, 
                   min_overlap=2, min_ratio=0.15, max_tokens=40):
     meta_text = f"{name or ''} {overview or ''}"
-    meta_tokens = tokenize(meta_text)
+    meta_tokens = set(tokenize(meta_text))
 
     kept = []
 
@@ -100,7 +100,7 @@ def build_all_tokens(row):
 
 def load_shows(): 
   """Creates a dataframe from tmdb.json"""
-  TMDB_PATH = BASE_DIR / "dataset" / "tmdb.json"
+  TMDB_PATH = BASE_DIR.parent / "backend" / "dataset" / "tmdb.json"
   
   df = pd.read_json(TMDB_PATH)
 
@@ -110,9 +110,17 @@ def load_shows():
   df["name_tokens"] = df["name"].apply(tokenize)
   df["overview_tokens"] = df["overview"].apply(tokenize)
 
-  # Start with NO reddit
+  df["reddit_tokens"] = df.apply(
+      lambda row: filter_reddit(
+          row["name"], row["overview"],
+          row.get("reddit_posts"), row.get("reddit_comments"),
+          tokenize
+      ),
+      axis=1
+  )
+
   df["all_tokens"] = df.apply(
-      lambda row: row["name_tokens"] * 4 + row["overview_tokens"] * 2,
+      lambda row: row["name_tokens"] * 4 + row["overview_tokens"] * 2 + row["reddit_tokens"] * 1,
       axis=1
   )
 

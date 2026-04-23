@@ -154,7 +154,7 @@ def generate_answer(user_query: str, retrieval_query: str, hits, client: LLMClie
   response = client.chat(prompt, stream=False, show_thinking=False)
   return response["content"].strip()
 
-def run_rag(user_query: str, client: LLMClient, top_k: int = 5):
+def run_rag(user_query: str, client: LLMClient, top_k: int = 10):
   """ 
   Full RAG pipeline: user query -> rewritten query -> retrieval -> displayed hits + LLM answer
   """
@@ -175,7 +175,7 @@ if __name__ == "__main__":
 
     client = LLMClient(api_key=os.getenv("SPARK_API_KEY"))
 
-    result = run_rag(query, client, top_k=5)
+    result = run_rag(query, client, top_k=10)
 
     print("\nOriginal query:")
     print(result["original_query"])
