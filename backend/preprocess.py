@@ -10,7 +10,8 @@ DOMAIN_STOPWORDS = {
     "at", "by", "from", "it", "this", "that", "these", "those", "be", "as",
     "are", "was", "were", "or", "but", "if", "then", "than", "so", "do",
     "does", "did", "have", "has", "had", "about", "into", "up", "down",
-    "out", "over", "under", "again", "further", "very", "can", "will", "just"
+    "out", "over", "under", "again", "further", "very", "can", "will", "just",
+    "like", "want", "looking", "lookingfor", "need", "shows", "reality", "series"
 }
 
 STOPWORDS = BASE_STOPWORDS | DOMAIN_STOPWORDS
