@@ -17,8 +17,8 @@ def build_svd(k=50):
   # join show's tokens into single string
   df["all_text"] = df["all_tokens"].apply(lambda toks: " ".join(toks))
     
-  vectorizer = TfidfVectorizer(stop_words = 'english', max_df = .7, 
-                              min_df = 3)
+  vectorizer = TfidfVectorizer(stop_words=list(preprocess.STOPWORDS), max_df = .3, 
+                              min_df = 5)
   # # shows x # vocab words
   td_matrix = vectorizer.fit_transform(df["all_text"])
 
@@ -28,6 +28,7 @@ def build_svd(k=50):
   s = s[order]
   U = U[:, order]
   Vt = Vt[order, :]
+  V = Vt.T
 
   # each vocab word has vector in latent space
   word_embeddings = Vt.T * s
@@ -36,13 +37,14 @@ def build_svd(k=50):
   word_to_index = vectorizer.vocabulary_
   index_to_word = {i: t for t, i in word_to_index.items()}
   # each show gets vector in latent space
-  doc_matrix = td_matrix @ word_embeddings
+  doc_matrix = td_matrix @ V
   doc_matrix_normed = normalize(doc_matrix, axis=1)
 
   return {
     "vectorizer": vectorizer,
     "word_to_index": word_to_index,
     "index_to_word": index_to_word,
+    "V": V,
     "word_embeddings": word_embeddings,
     "word_embeddings_normed": word_embeddings_normed,
     "doc_matrix_normed": doc_matrix_normed,
@@ -74,7 +76,7 @@ def embed_text(text, svd, top_n_terms=None):
         Useful for very long noisy queries.
     """
     vectorizer = svd["vectorizer"]
-    word_embeddings = svd["word_embeddings"]
+    word_embeddings = svd["V"]
 
     q_tfidf = vectorizer.transform([text])  # shape: 1 x vocab_size
 
@@ -208,13 +210,9 @@ def hybrid_search(query, svd, df, top_k=20, genre_id=None, languages=None,
     return tfidf_results
 
 def top_dimensions(query, result, svd, top_k_dims=5, top_words=6):
-    preprocessed_query = preprocess_query_for_svd(query, svd)
-    q_vec = embed_text(preprocessed_query, svd)
+    q_vec, doc_vec, preprocessed_query = get_query_and_doc_vectors(query, result, svd)
     if q_vec is None:
         return None
-
-    doc_idx = result["doc_idx"]
-    doc_vec = np.asarray(svd["doc_matrix_normed"][doc_idx]).ravel()
 
     contrib = q_vec * doc_vec
     top_idx = np.argsort(-np.abs(contrib))[:top_k_dims]
@@ -245,6 +243,8 @@ def top_dimensions(query, result, svd, top_k_dims=5, top_words=6):
         dimensions.append({
             "dimension": int(d),
             "side": side,
+            "query_activation": float(q_vec[d]),
+            "doc_activation": float(doc_vec[d]),
             "contribution": float(contrib[d]),
             "dimension_words": active_words
         })
@@ -253,10 +253,19 @@ def top_dimensions(query, result, svd, top_k_dims=5, top_words=6):
         "title": result["title"],
         "score": float(result["score"]),
         "processed_query": preprocessed_query,
-        "query_vector": q_vec.tolist(),
-        "doc_vector": doc_vec.tolist(),
         "dimensions": dimensions,
     }
+
+def get_query_and_doc_vectors(query, result, svd):
+    preprocessed_query = preprocess_query_for_svd(query, svd)
+    q_vec = embed_text(preprocessed_query, svd)
+    if q_vec is None:
+        return None, None, preprocessed_query
+
+    doc_idx = result["doc_idx"]
+    doc_vec = np.asarray(svd["doc_matrix_normed"][doc_idx]).ravel()
+
+    return q_vec, doc_vec, preprocessed_query
 
 if __name__ == "__main__":
     svd = build_svd()
@@ -267,16 +276,17 @@ if __name__ == "__main__":
 
     print("\nTop shows:")
     for result in results[:10]:
-        explanation = top_dimensions(
-        query, result, svd, top_k_dims=5, top_words=6
-    )
+        explanation = top_dimensions(query, result, svd, top_k_dims=5, top_words=6)
 
-    print(result["title"])
-    print("score:", result["score"])
-    # print("query vector:", explanation["query_vector"])
-    # print("doc vector:", explanation["doc_vector"])
+        if explanation is None:
+            continue
+        print(result["title"])
+        print("score:", result["score"])
+        print("processed query:", explanation["processed_query"])
 
-    for dim in explanation["dimensions"]:
-        print(f"  dimension {dim['dimension']} ({dim['side']})")
-        print(f"    words: {', '.join(dim['dimension_words'])}")
-    print()
+        for dim in explanation["dimensions"]:
+            print(f"  dimension {dim['dimension']} ({dim['side']})")
+            print(f"    query activation: {dim['query_activation']:.4f}")
+            print(f"    doc activation:   {dim['doc_activation']:.4f}")
+            print(f"    contribution:     {dim['contribution']:.4f}")
+            print(f"    words: {', '.join(dim['dimension_words'])}")
