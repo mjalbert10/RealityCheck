@@ -3,6 +3,9 @@ import { useState, useEffect } from 'react'
 import Modal from './components/modal'
 import Result from './components/result'
 import SearchIcon from './assets/mag.png'
+import ReactMarkdown from 'react-markdown'
+
+const MD = ReactMarkdown as React.ElementType;
 
 const GENRE_MAP: Record<number, string> = {
   10764: "Reality",
@@ -98,8 +101,8 @@ export default function App() {
     fetch(`/api/search?${params}`)
       .then((res) => res.json())
       .then((data) => {
-        setResults(data.results);
-        setRagOverview(data.answer);
+        setResults(data.results ?? []);
+        setRagOverview(data.answer ?? '');
       })
       .catch((err) => console.error('Search failed:', err));
     };
@@ -273,7 +276,12 @@ export default function App() {
 
           <h2 className="titles">Search Results</h2>
 
-          <p>{ragOverview}</p>
+          <div className="ai-box">
+            <span className="ai-label">AI overview</span>
+            <div>
+              <MD>{ragOverview}</MD>
+            </div>
+          </div>
 
           <div className="results-list">
             {results.length === 0 ? (

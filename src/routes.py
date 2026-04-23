@@ -77,7 +77,7 @@ def register_routes(app):
                 # Default: TF-IDF
                 results = tfidf_search(finQuery, **kwargs)
  
-            rag_hits = retrieve_hits(finQuery, top_k=5)
+            rag_hits = retrieve_hits(finQuery, top_k=20)
             answer = generate_answer(query, finQuery, rag_hits, _client)
         
             # make sure it's always a list
