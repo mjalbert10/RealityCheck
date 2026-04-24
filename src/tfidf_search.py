@@ -25,7 +25,8 @@ vocab = sorted(term for term, count in df_counts.items() if count >= MIN_DF)
 term_to_idx = {term: i for i, term in enumerate(vocab)}
 V = len(vocab)
 
-idf = np.array([1 / (df_counts[term] + 1) for term in vocab])
+# idf = np.array([1 / (df_counts[term] + 1) for term in vocab])
+idf = np.log((N + 1) / (df_counts[term] + 1))
 
 # ── Vectorizers ───────────────────────────────────────────────────────────────
 def tfidf_vectorize(tokens):
