@@ -1,4 +1,3 @@
-import json
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from scipy.sparse.linalg import svds
@@ -6,7 +5,6 @@ from sklearn.preprocessing import normalize
 import preprocess
 from query_expansion import spell_correction
 import tfidf_search
-# from query_stemming import stem_list
 
 def build_svd(k=50):
 
@@ -166,26 +164,65 @@ def preprocess_query_for_svd(query, svd):
 
 def svd_search(query, svd, df, top_k=20, genre_id=None, languages=None,
                rating=None, popularity=None, release_year=None):
+
     from tfidf_search import build_result
-    from preprocess import tokenize
 
     svd_df = svd["df"].reset_index(drop=True)
+
     preprocessed_query = preprocess_query_for_svd(query, svd)
     q_vec = embed_text(preprocessed_query, svd)
+
     if q_vec is None:
         return []
 
     doc_matrix_normed = svd["doc_matrix_normed"]
     scores = np.array(doc_matrix_normed @ q_vec).ravel()
 
-    top_pos = np.argsort(scores)[::-1][:top_k]
+    ranked_indices = np.argsort(scores)[::-1]
 
     results = []
-    for i in top_pos:
+
+    for i in ranked_indices:
+        if len(results) >= top_k:
+            break
+
+        row = svd_df.iloc[i]
+
+        # FILTERS
+        if genre_id and genre_id not in (row.get("genre_ids") or []):
+            continue
+
+        if languages and row.get("original_language") not in languages:
+            continue
+
+        if rating:
+            if not (rating[0] <= row.get("vote_average", 0) <= rating[1]):
+                continue
+
+        if release_year:
+            year = int(str(row.get("first_air_date", "0")).split("-")[0])
+            if not (release_year[0] <= year <= release_year[1]):
+                continue
+
         if scores[i] <= 0.01:
             continue
-        result = build_result(svd_df.iloc[i], scores[i])
+
+        result = build_result(row, scores[i])
         result["doc_idx"] = int(i)
+
+        # explanation (safe)
+        try:
+            explanation = explain_why_result_matched(query, result, svd)
+            result["match_explanation"] = (
+                "This show matches your query through shared semantic themes."
+            )
+            result["match_dimensions"] = explanation["dimensions"] if explanation else []
+            result["match_keywords"] = get_user_facing_keywords(explanation)
+        except Exception:
+            result["match_explanation"] = None
+            result["match_dimensions"] = []
+            result["match_keywords"] = []
+
         results.append(result)
 
     return results

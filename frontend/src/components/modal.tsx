@@ -15,6 +15,8 @@ interface ModalProps {
       vote_count: number
       reddit_posts: unknown[]
       reddit_comments: unknown[]
+      match_explanation?: string;
+      match_dimensions?: any[];
       keywords: string[]
     } | null
   onClose: () => void
@@ -48,6 +50,10 @@ export default function Modal({ show, onClose }: ModalProps) {
   }, [onClose])
 
   if (!show) return null
+
+  const aiExplanation = show.match_explanation;
+  const dimensions = show.match_dimensions;
+  const keywords = show.keywords ?? [];
 
   const year = show.first_air_date?.split('-')[0] ?? 'Unknown'
   const posterUrl = `https://image.tmdb.org/t/p/original${show.poster_path}`
@@ -101,10 +107,32 @@ export default function Modal({ show, onClose }: ModalProps) {
 
           <p className="modal-description">{show.description}</p>
 
-          {(show.keywords ?? []).length > 0 && (
-            <p className="modal-keywords">
-              Why this matched: <span>{show.keywords.join(', ')}</span>
-            </p>
+          {(keywords.length > 0 || aiExplanation) && (
+            <div className="why-matched">
+              <p>
+                <strong>Why this matched:</strong>{" "}
+                {aiExplanation ? (
+                  <span>{aiExplanation}</span>
+                ) : (
+                  <span>{keywords.join(", ")}</span>
+                )}
+              </p>
+            </div>
+          )}
+
+          {(dimensions?.length ?? 0) > 0 && (
+            <div className="svd-dimensions">
+              <p><strong>Match dimensions:</strong></p>
+              <ul>
+                {dimensions?.slice(0, 3).map((dim, i) => (
+                  <li key={i}>
+                    Dimension {dim.dimension}:{" "}
+                    {dim.matched_words?.slice(0, 3).join(", ") ||
+                      "general theme"}
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
           
           {(show.genre_ids ?? []).length > 0 && (

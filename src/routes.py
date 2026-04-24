@@ -1,11 +1,11 @@
 import os
 from flask import send_from_directory, request, jsonify
-from svd import build_svd, svd_search
+from svd import build_svd, svd_search, explain_why_result_matched, get_user_facing_keywords
 from tfidf_search import tfidf_search
-from rag import generate_answer, rewrite_query, retrieve_hits
+from rag import generate_answer, rewrite_query, retrieve_hits, SVD_INDEX
 from infosci_spark_client import LLMClient
 
-_svd = build_svd()
+
 _client = LLMClient(api_key=os.getenv("SPARK_API_KEY"))
 
 def register_routes(app):
@@ -49,7 +49,7 @@ def register_routes(app):
         try:
             query = request.args.get("q", "")
             if not query.strip():
-                return jsonify([])
+                return jsonify({"results": [], "answer": ""})
 
             model = request.args.get("type", "tfidf")
             year_start = request.args.get("year_start", "")
@@ -72,7 +72,23 @@ def register_routes(app):
             finQuery = rewrite_query(query, _client)
 
             if model == "svd":
-                results = svd_search(finQuery, _svd, [], **kwargs)
+                results = svd_search(finQuery, SVD_INDEX, [], **kwargs)
+
+                enriched = []
+                for r in results:
+                    try:
+                        explanation = explain_why_result_matched(finQuery, r, SVD_INDEX)
+                        keywords = get_user_facing_keywords(explanation)
+
+                        r["match_explanation"] = f"Matched on: {', '.join(keywords)}"
+                        r["match_dimensions"] = explanation.get("dimensions", []) if explanation else []
+                    except Exception:
+                        r["match_explanation"] = None
+                        r["match_dimensions"] = []
+
+                    enriched.append(r)
+
+                results = enriched
             else:
                 # Default: TF-IDF
                 results = tfidf_search(finQuery, **kwargs)

@@ -10,7 +10,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
 
-# Build once at startup, not on every query
+from svd import build_svd
+
 SVD_INDEX = build_svd(k=50)
 SHOW_DF = SVD_INDEX["df"]
 
@@ -136,10 +137,10 @@ def generate_answer(user_query: str, retrieval_query: str, hits, client: LLMClie
           "role": "system",
           "content": (
               "You are a helpful assistant for a TV recommendation system. "
-              "Answer using only the retrieved results below. "
               "Recommend shows only if they are supported by the retrieved context. "
-              "When useful, mention which retrieved shows best match the user's request and why. "
               "If the retrieved context is weak or insufficient, say that clearly."
+              "Explain why the matched shows are relevant to the user's query based on the context. "
+              "Limit response to 1-3 sentences. Be concise."
           ),
       },
       {
@@ -159,7 +160,11 @@ def run_rag(user_query: str, client: LLMClient, top_k: int = 5):
   Full RAG pipeline: user query -> rewritten query -> retrieval -> displayed hits + LLM answer
   """
 
-  retrieval_query = rewrite_query(user_query, client)
+  retrieval_query = rewrite_query(user_query, client).strip()
+
+  if not retrieval_query:
+    retrieval_query = user_query
+    
   hits = retrieve_hits(retrieval_query, top_k=top_k)
   answer = generate_answer(user_query, retrieval_query, hits, client)
 
