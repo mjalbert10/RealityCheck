@@ -26,7 +26,10 @@ term_to_idx = {term: i for i, term in enumerate(vocab)}
 V = len(vocab)
 
 # idf = np.array([1 / (df_counts[term] + 1) for term in vocab])
-idf = np.log((N + 1) / (df_counts[term] + 1))
+idf = np.array([
+    np.log((N + 1) / (df_counts[term] + 1))
+    for term in vocab
+])
 
 # ── Vectorizers ───────────────────────────────────────────────────────────────
 def tfidf_vectorize(tokens):
@@ -114,7 +117,7 @@ def _search_with_matrix(matrix, norms, query_vec, candidates, top_k):
     if query_norm == 0:
         return []
 
-    idx = candidates.index.to_numpy()
+    idx = candidates.index.values  # KEEP original indices
     sub_matrix = matrix[idx]
     sub_norms = norms[idx]
 
@@ -124,7 +127,12 @@ def _search_with_matrix(matrix, norms, query_vec, candidates, top_k):
     scores[mask] = sub_matrix[mask] @ query_vec / denom[mask]
 
     top_pos = np.argsort(scores)[::-1][:top_k]
-    return [build_result(candidates.iloc[i], scores[i]) for i in top_pos if scores[i] > 0.01]
+
+    return [
+        build_result(df.iloc[idx[i]], scores[i])
+        for i in top_pos
+        if scores[i] > 0.01
+    ]
 
 def tfidf_search(query, top_k=5, genre_id=None, languages=None, rating=None,
                  popularity=None, release_year=None):
