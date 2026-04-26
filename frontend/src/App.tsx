@@ -47,7 +47,6 @@ export default function App() {
   const [selectedShow, setSelectedShow] = useState<ShowResult | null>(null);
   const [loading, setLoading] = useState(false);
 
-
   useEffect(() => {
     fetch('/api/filters')
       .then(r => r.json())
@@ -82,6 +81,7 @@ export default function App() {
     if (e.key === 'Enter') performSearch();
   };
 
+
   return (
     <div className="app">
       <header className="app-header">
@@ -93,12 +93,17 @@ export default function App() {
 
       <div className="app-body">
         {filtersOn && (
-          <aside className="filter-panel">
+          <aside
+            className="filter-panel"
+            id="filter-panel"
+            aria-label="Search filters"
+          >
             <p className="filter-section-label">The basics</p>
 
             <div className="filter-group">
-              <label className="filter-label">Genre</label>
+              <label className="filter-label" htmlFor="genre-select">Genre</label>
               <select
+                id="genre-select"
                 className="filter-select"
                 value={subgenre}
                 onChange={e => setSubgenre(e.target.value)}
@@ -111,107 +116,135 @@ export default function App() {
             </div>
 
             <div className="filter-group">
-              <label className="filter-label">Release year</label>
-              <div className="range-row">
-                <input
-                  className="filter-input"
-                  type="number"
-                  placeholder={filterOptions?.years.min ?? 'From'}
-                  min={filterOptions?.years.min ?? '1900'}
-                  max={filterOptions?.years.max ?? '2026'}
-                  value={yearRange.start}
-                  onChange={e => setYearRange({ ...yearRange, start: e.target.value })}
-                />
-                <span className="range-sep">–</span>
-                <input
-                  className="filter-input"
-                  type="number"
-                  placeholder={filterOptions?.years.max ?? 'To'}
-                  min={filterOptions?.years.min ?? '1900'}
-                  max={filterOptions?.years.max ?? '2026'}
-                  value={yearRange.end}
-                  onChange={e => setYearRange({ ...yearRange, end: e.target.value })}
-                />
-              </div>
+              {/* fieldset/legend instead of bare label for a range pair */}
+              <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
+                <legend className="filter-label">Release year</legend>
+                <div className="range-row">
+                  <input
+                    className="filter-input"
+                    id="year-from"
+                    type="number"
+                    aria-label="From year"
+                    placeholder={filterOptions?.years.min ?? 'From'}
+                    min={filterOptions?.years.min ?? '1900'}
+                    max={filterOptions?.years.max ?? '2026'}
+                    value={yearRange.start}
+                    onChange={e => setYearRange({ ...yearRange, start: e.target.value })}
+                  />
+                  <span className="range-sep" aria-hidden="true">–</span>
+                  <input
+                    className="filter-input"
+                    id="year-to"
+                    type="number"
+                    aria-label="To year"
+                    placeholder={filterOptions?.years.max ?? 'To'}
+                    min={filterOptions?.years.min ?? '1900'}
+                    max={filterOptions?.years.max ?? '2026'}
+                    value={yearRange.end}
+                    onChange={e => setYearRange({ ...yearRange, end: e.target.value })}
+                  />
+                </div>
+              </fieldset>
             </div>
 
             <div className="filter-group">
-              <label className="filter-label">Language</label>
-              <div className="checkbox-list">
-                {filterOptions?.languages.map(lang => (
-                  <label key={lang} className="checkbox-item">
-                    <input
-                      type="checkbox"
-                      value={lang}
-                      checked={language.includes(lang)}
-                      onChange={e => setLanguage(
-                        e.target.checked ? [...language, lang] : language.filter(v => v !== lang)
-                      )}
-                    />
-                    {lang.toUpperCase()}
-                  </label>
-                ))}
-              </div>
+              <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
+                <legend className="filter-label">Language</legend>
+                <div className="checkbox-list">
+                  {filterOptions?.languages.map(lang => (
+                    <label key={lang} className="checkbox-item">
+                      <input
+                        type="checkbox"
+                        value={lang}
+                        checked={language.includes(lang)}
+                        onChange={e => setLanguage(
+                          e.target.checked ? [...language, lang] : language.filter(v => v !== lang)
+                        )}
+                      />
+                      {lang.toUpperCase()}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
             </div>
 
             <p className="filter-section-label" style={{ marginTop: '1.5rem' }}>Refine</p>
 
             <div className="filter-group">
-              <label className="filter-label">Rating</label>
-              <div className="range-row">
-                <input
-                  className="filter-input"
-                  type="number" step="0.1"
-                  placeholder={filterOptions ? String(Math.floor(filterOptions.ratings.min)) : 'Min'}
-                  min={filterOptions?.ratings.min ?? 0}
-                  max={filterOptions?.ratings.max ?? 10}
-                  value={ratings.min}
-                  onChange={e => setRatings({ ...ratings, min: e.target.value })}
-                />
-                <span className="range-sep">–</span>
-                <input
-                  className="filter-input"
-                  type="number" step="0.1"
-                  placeholder={filterOptions ? String(Math.ceil(filterOptions.ratings.max)) : 'Max'}
-                  min={filterOptions?.ratings.min ?? 0}
-                  max={filterOptions?.ratings.max ?? 10}
-                  value={ratings.max}
-                  onChange={e => setRatings({ ...ratings, max: e.target.value })}
-                />
-              </div>
+              <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
+                <legend className="filter-label">Rating</legend>
+                <div className="range-row">
+                  <input
+                    className="filter-input"
+                    type="number" step="0.1"
+                    aria-label="Minimum rating"
+                    placeholder={filterOptions ? String(Math.floor(filterOptions.ratings.min)) : 'Min'}
+                    min={filterOptions?.ratings.min ?? 0}
+                    max={filterOptions?.ratings.max ?? 10}
+                    value={ratings.min}
+                    onChange={e => setRatings({ ...ratings, min: e.target.value })}
+                  />
+                  <span className="range-sep" aria-hidden="true">–</span>
+                  <input
+                    className="filter-input"
+                    type="number" step="0.1"
+                    aria-label="Maximum rating"
+                    placeholder={filterOptions ? String(Math.ceil(filterOptions.ratings.max)) : 'Max'}
+                    min={filterOptions?.ratings.min ?? 0}
+                    max={filterOptions?.ratings.max ?? 10}
+                    value={ratings.max}
+                    onChange={e => setRatings({ ...ratings, max: e.target.value })}
+                  />
+                </div>
+              </fieldset>
             </div>
 
             <div className="filter-group">
-              <label className="filter-label">Popularity</label>
-              <div className="pop-toggle">
-                {['low', 'medium', 'high'].map(val => (
-                  <button
-                    key={val}
-                    className={`pop-btn${popularity === val ? ' pop-btn--active' : ''}`}
-                    onClick={() => setPopularity(popularity === val ? '' : val)}
-                  >
-                    {val.charAt(0).toUpperCase() + val.slice(1)}
-                  </button>
-                ))}
-              </div>
+              <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
+                <legend className="filter-label">Popularity</legend>
+                <div className="pop-toggle" role="group">
+                  {(['low', 'medium', 'high'] as const).map(val => (
+                    <button
+                      key={val}
+                      className={`pop-btn${popularity === val ? ' pop-btn--active' : ''}`}
+                      aria-pressed={popularity === val}
+                      onClick={() => setPopularity(popularity === val ? '' : val)}
+                    >
+                      {val.charAt(0).toUpperCase() + val.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
             </div>
 
-            <button className="find-btn" onClick={performSearch}>Find results</button>
+            <button className="find-btn" onClick={performSearch}>
+              Find results
+            </button>
           </aside>
         )}
 
         <main className="results-panel">
           <div className="search-row">
             <div className="search-box">
-              <img
-                src={SearchIcon}
-                alt="Search"
-                className="search-icon"
+              {/* Wrap the icon in a button so it's keyboard-accessible */}
+              <label htmlFor="search-input">Search for a TV show</label>
+              <button
+                className="search-icon-btn"
+                aria-label="Search"
                 onClick={performSearch}
-              />
+                type="button"
+              >
+                <img
+                  src={SearchIcon}
+                  alt=""
+                  aria-hidden="true"
+                  className="search-icon"
+                />
+              </button>
               <input
+                id="search-input"
                 className="search-input"
-                type="text"
+                type="search"
                 placeholder="e.g. dramatic survival show"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
@@ -237,7 +270,7 @@ export default function App() {
           </div>
 
           {ragOverview && (
-            <div className="ai-overview">
+            <div className="ai-overview" role="region" aria-label="AI overview">
               <span className="ai-overview-label">AI overview</span>
               <div className="ai-overview-body">
                 <MD>{ragOverview}</MD>
@@ -245,10 +278,17 @@ export default function App() {
             </div>
           )}
 
-          <div className="results-list">
+          {/* aria-live so screen readers announce result updates */}
+          <div
+            className="results-list"
+            role="region"
+            aria-label="Search results"
+            aria-live="polite"
+            aria-busy={loading}
+          >
             {loading ? (
-              <div className="loading-state">
-                <div className="loading-dots">
+              <div className="loading-state" role="status" aria-label="Loading results">
+                <div className="loading-dots" aria-hidden="true">
                   <span /><span /><span />
                 </div>
                 <p className="loading-text">Finding shows...</p>
@@ -256,11 +296,28 @@ export default function App() {
             ) : results.length === 0 ? (
               <div className="empty-state">
                 <p className="empty-tagline">Find your next binge.</p>
-                <p className="empty-hint">Try searching something like <span className="empty-example">"dramatic survival competition"</span> or <span className="empty-example">"feel-good cooking show"</span></p>
+                <p className="empty-hint">
+                  Try searching something like{' '}
+                  <span className="empty-example">"dramatic survival competition"</span>{' '}
+                  or <span className="empty-example">"feel-good cooking show"</span>
+                </p>
               </div>
             ) : (
               results.map((show, index) => (
-                <div key={`${show.title}-${index}`} onClick={() => setSelectedShow(show)}>
+                <div
+                  key={`${show.title}-${index}`}
+                  onClick={() => setSelectedShow(show)}
+                  // Make the card keyboard-accessible if Result doesn't already handle this
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`View details for ${show.title}`}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedShow(show);
+                    }
+                  }}
+                >
                   <Result
                     title={show.title}
                     year={parseInt(show.first_air_date?.split('-')[0]) || 0}
