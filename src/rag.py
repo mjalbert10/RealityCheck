@@ -1,9 +1,7 @@
 from infosci_spark_client import LLMClient
 from svd import (
   build_svd,
-  hybrid_search,
-  explain_why_result_matched,
-  get_user_facing_keywords,
+  hybrid_search
 )
 import os
 from pathlib import Path
@@ -77,12 +75,27 @@ def rewrite_query(user_query: str, client: LLMClient) -> str:
   response = client.chat(prompt, stream=False, show_thinking=False)
   return response["content"].strip()
 
+explanation, keywords = "", ""
 def build_context_from_hits(retrieval_query: str, hits, svd_index) -> str:
   """
     Build the exact context that will be passed to the LLM from the same hits shown to the user.
   """
   blocks = []
-
+  '''
+    hits structure is [r (dict), r (dict)]
+    {'score': 0.8997159004768583, 
+    'title': 'Survive This', 
+    'description': 'Eight teenagers with limited survival skills training are taken into a forest and confronted with a number of survival challenges to test their skills and perseverance.', 
+    'language': 'en', 
+    'popularity': np.float64(0.6749), 
+    'rating': np.float64(0.0), 
+    'first_air_date': '2009-04-07', 
+    'genre_ids': [10764], 'doc_idx': 616, 
+    'search_method': 'svd’, 
+    "match_explanation" = f"Matched on: {', '.join(dim['dimension_words'])}"
+    "match_dimensions"] = dim
+    }, 
+  '''
   for rank, hit in enumerate(hits, start=1):
       title = hit.get("title", "Untitled")
       score = hit.get("score", 0.0)
@@ -99,8 +112,9 @@ def build_context_from_hits(retrieval_query: str, hits, svd_index) -> str:
           row = svd_index["df"].iloc[doc_idx]
 
           try:
-              explanation = explain_why_result_matched(retrieval_query, hit, svd_index)
-              keywords = get_user_facing_keywords(explanation)
+              # explanation = explain_why_result_matched(retrieval_query, hit, svd_index)
+              # keywords = get_user_facing_keywords(explanation)
+              keywords = hits.get("match_explanation")
               if keywords:
                   block_lines.append("Why it matched: " + ", ".join(keywords))
           except Exception:
@@ -155,7 +169,7 @@ def generate_answer(user_query: str, retrieval_query: str, hits, client: LLMClie
   response = client.chat(prompt, stream=False, show_thinking=False)
   return response["content"].strip()
 
-def run_rag(user_query: str, client: LLMClient, top_k: int = 5):
+def run_rag(search_algo_hits : list, user_query: str, client: LLMClient, top_k: int = 5):
   """ 
   Full RAG pipeline: user query -> rewritten query -> retrieval -> displayed hits + LLM answer
   """
@@ -165,7 +179,7 @@ def run_rag(user_query: str, client: LLMClient, top_k: int = 5):
   if not retrieval_query:
     retrieval_query = user_query
     
-  hits = retrieve_hits(retrieval_query, top_k=top_k)
+  hits = search_algo_hits # retrieve_hits(retrieval_query, top_k=top_k)
   answer = generate_answer(user_query, retrieval_query, hits, client)
 
   return {
@@ -175,12 +189,12 @@ def run_rag(user_query: str, client: LLMClient, top_k: int = 5):
       "answer": answer,
   }
 
-if __name__ == "__main__":
+def main(search_algo_hits): 
     query = input("Ask about reality shows: ").strip()
 
     client = LLMClient(api_key=os.getenv("SPARK_API_KEY"))
 
-    result = run_rag(query, client, top_k=5)
+    result = run_rag(search_algo_hits, query, client, top_k=5)
 
     print("\nOriginal query:")
     print(result["original_query"])
@@ -197,3 +211,10 @@ if __name__ == "__main__":
 
     print("\nLLM answer:")
     print(result["answer"])
+    return rag_result
+   
+
+rag_result = {} 
+if __name__ == "__main__":
+    import sys
+    rag_result = main(sys.argv[1:])
