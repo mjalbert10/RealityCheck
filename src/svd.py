@@ -267,7 +267,9 @@ def get_query_and_doc_vectors(query, result, svd):
 
     return q_vec, doc_vec, preprocessed_query
 
-explanation = {}
+results = []
+# data structure: {result 1 : explanation, result 2... result 10}
+final_explanations = {}
 if __name__ == "__main__":
     svd = build_svd()
     df = preprocess.load_shows()
@@ -291,3 +293,4 @@ if __name__ == "__main__":
             print(f"    doc activation:   {dim['doc_activation']:.4f}")
             print(f"    contribution:     {dim['contribution']:.4f}")
             print(f"    words: {', '.join(dim['dimension_words'])}")
+        final_explanations[result] = explanation
