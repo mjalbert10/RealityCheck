@@ -1,6 +1,6 @@
 import os
 from flask import send_from_directory, request, jsonify
-from svd import build_svd, svd_search
+from svd import build_svd, svd_search, explain_why_result_matched, get_user_facing_keywords
 from tfidf_search import tfidf_search
 from rag import generate_answer, rewrite_query, retrieve_hits, SVD_INDEX
 from infosci_spark_client import LLMClient
@@ -75,14 +75,11 @@ def register_routes(app):
                 import svd
                 svd.main()
                 results = svd.results
-                # top 10 results with dimensions/explanations in structure 
-                # [(result, explanation), (result, explanation), ...]
                 all_result_explanations = svd.final_explanations
                 '''
                 results = svd_search(finQuery, SVD_INDEX, [], **kwargs)
                 '''
                 enriched = []
-                # append dimensions and svd information to results
                 for r in results:
                     try:
                         #explanation = explain_why_result_matched(finQuery, r, SVD_INDEX)
@@ -99,19 +96,9 @@ def register_routes(app):
             else:
                 # Default: TF-IDF
                 results = tfidf_search(finQuery, **kwargs)
-
-            import rag
-            # send svd results to main to generate explanations
-            '''
-            result: dict[str, Any] = {
-            "original_query": str,
-            "retrieval_query": str,
-            "hits": list[dict[str, Any]],
-            "answer": str,
-            '''
-            rag_result = rag.main(results) 
-            rag_hits = rag_result["hits"]
-            answer = rag_result["answer"]
+ 
+            rag_hits = retrieve_hits(finQuery, top_k=20)
+            answer = generate_answer(query, finQuery, rag_hits, _client)
         
             # make sure it's always a list
             if not results:
