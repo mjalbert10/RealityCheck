@@ -267,6 +267,7 @@ def get_query_and_doc_vectors(query, result, svd):
 
     return q_vec, doc_vec, preprocessed_query
 
+explanation = {}
 if __name__ == "__main__":
     svd = build_svd()
     df = preprocess.load_shows()
