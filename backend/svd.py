@@ -67,6 +67,84 @@ def build_svd(k=50):
 #   # removes query word and converts sims to floats
 #   return [(index_to_word[i], float(sims[i])) for i in asort if i != idx][:k]
 
+
+def explain_why_result_matched(query, result, svd, top_dims=3, top_words=5):
+    preprocessed_query = preprocess_query_for_svd(query, svd)
+    q_vec = embed_text(preprocessed_query, svd)
+    if q_vec is None:
+        return None
+
+    doc_idx = result["doc_idx"]
+    doc_vec = np.asarray(svd["doc_matrix_normed"][doc_idx]).ravel()
+    doc_tokens = set(svd["df"].iloc[doc_idx]["all_tokens"])
+
+    # per-dimension contribution to the final cosine score
+    contrib = q_vec * doc_vec
+    top_idx = np.argsort(-np.abs(contrib))[:top_dims]
+
+    explanation = []
+    for d in top_idx:
+        weights = svd["word_embeddings"][:, d]
+        index_to_word = svd["index_to_word"]
+
+        pos_idx = np.argsort(-weights)[:top_words]
+        neg_idx = np.argsort(weights)[:top_words]
+
+        positive_words = [index_to_word[i] for i in pos_idx]
+        negative_words = [index_to_word[i] for i in neg_idx]
+
+        # use the side that query and document matched on
+        if q_vec[d] >= 0 and doc_vec[d] >= 0:
+            matched_words = [w for w in positive_words if w in doc_tokens]
+            side = "positive"
+        elif q_vec[d] < 0 and doc_vec[d] < 0:
+            matched_words = [w for w in negative_words if w in doc_tokens]
+            side = "negative"
+        else:
+            matched_words = []
+            side = "mixed"
+
+        explanation.append({
+            "dimension": int(d),
+            "side": side,
+            "query_activation": float(q_vec[d]),
+            "doc_activation": float(doc_vec[d]),
+            "contribution": float(contrib[d]),
+            "matched_words": matched_words,
+            "positive_words": positive_words,
+            "negative_words": negative_words,
+        })
+
+    return {
+        "title": result["title"],
+        "score": float(result["score"]),
+        "processed_query": preprocessed_query,
+        "dimensions": explanation,
+    }
+
+
+def get_user_facing_keywords(explanation, max_keywords=4):
+    """
+    Pull a short keyword list from explain_why_result_matched output.
+    Deduplicates while preserving importance order.
+    """
+    if explanation is None:
+        return []
+
+    keywords = []
+    seen = set()
+
+    for dim in explanation["dimensions"]:
+        for word in dim["matched_words"]:
+            if word not in seen:
+                seen.add(word)
+                keywords.append(word)
+            if len(keywords) == max_keywords:
+                return keywords
+
+    return keywords
+
+
 def embed_text(text, svd, top_n_terms=None):
     """
     Convert a full sentence/query into one vector in the SVD space.
