@@ -103,13 +103,14 @@ def register_routes(app):
             import rag
             # send svd results to main to generate explanations
             '''
-            result: dict[str, Any] = {
+            rag_result: dict[str, Any] = {
             "original_query": str,
             "retrieval_query": str,
             "hits": list[dict[str, Any]],
             "answer": str,
             '''
-            rag_result = rag.main(results) 
+            rag.main(results) 
+            rag_result = rag.rag_result
             rag_hits = rag_result["hits"]
             answer = rag_result["answer"]
         
