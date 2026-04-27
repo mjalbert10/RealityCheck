@@ -72,26 +72,22 @@ def register_routes(app):
             finQuery = rewrite_query(query, _client)
 
             if model == "svd":
-                import svd
-                svd.main()
-                results = svd.results
-                all_result_explanations = svd.final_explanations
-                '''
                 results = svd_search(finQuery, SVD_INDEX, [], **kwargs)
-                '''
+
                 enriched = []
                 for r in results:
                     try:
-                        #explanation = explain_why_result_matched(finQuery, r, SVD_INDEX)
-                        #keywords = get_user_facing_keywords(explanation)
-                        # for each result, access explanation
-                        dim = all_result_explanations[r]["dimensions"]
-                        r["match_explanation"] = f"Matched on: {', '.join(dim['dimension_words'])}"
-                        r["match_dimensions"] = dim
+                        explanation = explain_why_result_matched(finQuery, r, SVD_INDEX)
+                        keywords = get_user_facing_keywords(explanation)
+
+                        r["match_explanation"] = f"Matched on: {', '.join(keywords)}"
+                        r["match_dimensions"] = explanation.get("dimensions", []) if explanation else []
                     except Exception:
                         r["match_explanation"] = None
-                        r["match_dimensions"] = {}
+                        r["match_dimensions"] = []
+
                     enriched.append(r)
+
                 results = enriched
             else:
                 # Default: TF-IDF
