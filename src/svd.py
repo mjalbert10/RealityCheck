@@ -269,7 +269,7 @@ def get_query_and_doc_vectors(query, result, svd):
 
 results = []
 # data structure: {result 1 : explanation, result 2... result 10}
-final_explanations = []
+final_explanations = {}
 if __name__ == "__main__":
     svd = build_svd()
     df = preprocess.load_shows()
@@ -278,7 +278,6 @@ if __name__ == "__main__":
     results = hybrid_search(query, svd, df)
 
     print("\nTop shows:")
-    print(results[:10])
     for result in results[:10]:
         explanation = top_dimensions(query, result, svd, top_k_dims=5, top_words=6)
 
@@ -294,4 +293,4 @@ if __name__ == "__main__":
             print(f"    doc activation:   {dim['doc_activation']:.4f}")
             print(f"    contribution:     {dim['contribution']:.4f}")
             print(f"    words: {', '.join(dim['dimension_words'])}")
-        final_explanations.append((result, explanation))
+        final_explanations[result] = explanation
