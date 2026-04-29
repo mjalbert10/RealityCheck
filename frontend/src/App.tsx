@@ -22,6 +22,7 @@ interface ShowResult {
   origin_country: string[]; vote_count: number;
   reddit_posts: unknown[]; reddit_comments: unknown[];
   keywords: string[]; match_explanation?: string; match_dimensions?: any[];
+  llm_explanation?: string;
 }
 
 interface FilterOptions {
@@ -326,7 +327,7 @@ export default function App() {
                     description={show.description}
                     tags={show.genre_ids?.map(id => GENRE_MAP[id] ?? `Genre ${id}`).filter(Boolean) ?? [show.language?.toUpperCase()]}
                     keywords={show.keywords ?? []}
-                    aiExplanation={show.match_explanation}
+                    aiExplanation={show.llm_explanation}
                     dimensions={show.match_dimensions}
                   />
                 </div>

@@ -359,19 +359,19 @@ def hybrid_search(query, svd, df, top_k=20, genre_id=None, languages=None,
     return tfidf_results
 
 def top_dimensions(query, result, svd, top_k_dims=5, top_words=6):
-    preprocessed_query = preprocess_query_for_svd(query, svd)
     q_vec, doc_vec, preprocessed_query = get_query_and_doc_vectors(query, result, svd)
     if q_vec is None:
         return None
 
     doc_idx = result["doc_idx"]
-    doc_vec = np.asarray(svd["doc_matrix_normed"][doc_idx]).ravel()
+    doc_tokens = set(svd["df"].iloc[doc_idx]["all_tokens"])
     contrib = q_vec * doc_vec
     top_idx = np.argsort(-np.abs(contrib))[:top_k_dims]
 
     index_to_word = svd["index_to_word"]
     word_embeddings = svd["word_embeddings"]
     dimensions = []
+
     for d in top_idx:
         weights = word_embeddings[:, d]
         pos_idx = np.argsort(-weights)[:top_words]
@@ -382,22 +382,26 @@ def top_dimensions(query, result, svd, top_k_dims=5, top_words=6):
 
         if q_vec[d] >= 0 and doc_vec[d] >= 0:
             side = "positive"
+            matched_words = [w for w in positive_words if w in doc_tokens]
         elif q_vec[d] < 0 and doc_vec[d] < 0:
             side = "negative"
-            active_words = negative_words
+            matched_words = [w for w in negative_words if w in doc_tokens]
         else:
             side = "mixed"
-            active_words = positive_words + negative_words
+            matched_words = []
+
         dimensions.append({
             "dimension": int(d),
             "side": side,
             "query_activation": float(q_vec[d]),
             "doc_activation": float(doc_vec[d]),
             "contribution": float(contrib[d]),
-            "dimension_words": active_words
+            "matched_words": matched_words,
+            "positive_words": positive_words,
+            "negative_words": negative_words,
         })
 
-        return {
+    return {
         "title": result["title"],
         "score": float(result["score"]),
         "processed_query": preprocessed_query,
@@ -436,4 +440,4 @@ if __name__ == "__main__":
             print(f"    query activation: {dim['query_activation']:.4f}")
             print(f"    doc activation:   {dim['doc_activation']:.4f}")
             print(f"    contribution:     {dim['contribution']:.4f}")
-            print(f"    words: {', '.join(dim['dimension_words'])}")
+            print(f"    words: {', '.join(dim['matched_words'])}")

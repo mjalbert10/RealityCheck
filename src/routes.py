@@ -1,8 +1,9 @@
 import os
 from flask import send_from_directory, request, jsonify
-from svd import build_svd, svd_search, explain_why_result_matched, get_user_facing_keywords
+from flask_sqlalchemy import query
+from svd import svd_search, explain_why_result_matched, get_user_facing_keywords
 from tfidf_search import tfidf_search
-from rag import generate_answer, rewrite_query, retrieve_hits, SVD_INDEX
+from rag import generate_answer, result_explanations, rewrite_query, retrieve_hits, SVD_INDEX
 from infosci_spark_client import LLMClient
 
 
@@ -79,8 +80,11 @@ def register_routes(app):
                     try:
                         explanation = explain_why_result_matched(finQuery, r, SVD_INDEX)
                         keywords = get_user_facing_keywords(explanation)
+                        matchReason = explanation.get("match_reason", "Matched on relevance")
+                        
+                        r["match_explanation"] = f"Matched because {keywords}"
 
-                        r["match_explanation"] = f"Matched on: {', '.join(keywords)}"
+                        # r["match_explanation"] = f"Matched on: {', '.join(keywords)}"
                         r["match_dimensions"] = explanation.get("dimensions", []) if explanation else []
                     except Exception:
                         r["match_explanation"] = None
@@ -94,8 +98,8 @@ def register_routes(app):
                 results = tfidf_search(finQuery, **kwargs)
  
             rag_hits = results # retrieve_hits(finQuery, top_k=20)
+            results = result_explanations(query, finQuery, results, _client)
             answer = generate_answer(query, finQuery, rag_hits, _client)
-        
             # make sure it's always a list
             if not results:
                 results = []

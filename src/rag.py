@@ -78,45 +78,47 @@ def rewrite_query(user_query: str, client: LLMClient) -> str:
   return response["content"].strip()
 
 def build_context_from_hits(retrieval_query: str, hits, svd_index) -> str:
-  """
-    Build the exact context that will be passed to the LLM from the same hits shown to the user.
-  """
-  blocks = []
+    blocks = []
 
-  for rank, hit in enumerate(hits, start=1):
-      title = hit.get("title", "Untitled")
-      score = hit.get("score", 0.0)
-      method = hit.get("search_method", "unknown")
+    for rank, hit in enumerate(hits, start=1):
+        title = hit.get("title", "Untitled")
+        score = hit.get("score", 0.0)
+        method = hit.get("search_method", "unknown")
 
-      block_lines = [
-          f"### Result {rank}: {title}",
-          f"Score: {score:.4f}",
-          f"Search method: {method}",
-      ]
+        block_lines = [
+            f"### Result {rank}: {title}",
+            f"Score: {score:.4f}",
+            f"Search method: {method}",
+        ]
 
-      doc_idx = hit.get("doc_idx")
-      if doc_idx is not None:
-          row = svd_index["df"].iloc[doc_idx]
+        # Use llm_explanation if already computed, otherwise fall back to SVD explanation
+        if hit.get("llm_explanation"):
+            block_lines.append("Why it matched: " + hit["llm_explanation"])
+        else:
+            doc_idx = hit.get("doc_idx")
+            if doc_idx is not None:
+                try:
+                    explanation = explain_why_result_matched(retrieval_query, hit, svd_index)
+                    keywords = get_user_facing_keywords(explanation)
+                    if keywords:
+                        block_lines.append("Why it matched: " + ", ".join(keywords))
+                except Exception:
+                    pass
 
-          try:
-              explanation = explain_why_result_matched(retrieval_query, hit, svd_index)
-              keywords = get_user_facing_keywords(explanation)
-              if keywords:
-                  block_lines.append("Why it matched: " + ", ".join(keywords))
-          except Exception:
-              pass
+        doc_idx = hit.get("doc_idx")
+        if doc_idx is not None:
+            row = svd_index["df"].iloc[doc_idx]
+            block_lines.append("")
+            block_lines.append(row_to_context(row))
+        else:
+            overview = hit.get("overview", "") or hit.get("text", "") or ""
+            if overview:
+                block_lines.append("")
+                block_lines.append(overview)
 
-          block_lines.append("")
-          block_lines.append(row_to_context(row))
-      else:
-          overview = hit.get("overview", "") or hit.get("text", "") or ""
-          if overview:
-              block_lines.append("")
-              block_lines.append(overview)
+        blocks.append("\n".join(block_lines))
 
-      blocks.append("\n".join(block_lines))
-
-  return "\n\n---\n\n".join(blocks)
+    return "\n\n---\n\n".join(blocks)
 
 def retrieve_hits(retrieval_query: str, top_k: int = 5):
   """
@@ -154,6 +156,42 @@ def generate_answer(user_query: str, retrieval_query: str, hits, client: LLMClie
   ]
   response = client.chat(prompt, stream=False, show_thinking=False)
   return response["content"].strip()
+
+def result_explanations(user_query, retrieval_query, results, client):
+    for r in results:
+        try:
+            title = r.get("title", "Untitled")
+            overview = r.get("overview", "")
+
+            prompt = [
+                {
+                    "role": "system",
+                    "content": (
+                        "You explain why a TV show search result matched a user's query. "
+                        "Use only the provided result information. "
+                        "Write 1 short sentence. "
+                        "Do not mention scores."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        f"User query: {user_query}\n"
+                        f"Retrieval query: {retrieval_query}\n"
+                        f"Show title: {title}\n"
+                        f"Overview: {overview}\n\n"
+                        "Why did this result match?"
+                    ),
+                },
+            ]
+
+            response = client.chat(prompt, stream=False, show_thinking=False)
+            r["llm_explanation"] = response["content"].strip()
+
+        except Exception:
+            r["llm_explanation"] = "This result matched based on its title, overview, or related discussion."
+
+    return results
 
 def run_rag(user_query: str, client: LLMClient, top_k: int = 5):
   """ 
