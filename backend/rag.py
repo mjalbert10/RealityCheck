@@ -154,6 +154,41 @@ def generate_answer(user_query: str, retrieval_query: str, hits, client: LLMClie
   response = client.chat(prompt, stream=False, show_thinking=False)
   return response["content"].strip()
 
+def result_explanations(user_query, retrieval_query, results, client):
+    for r in results:
+        try:
+            title = r.get("title", "Untitled")
+            overview = r.get("overview", "")
+
+            prompt = [
+                {
+                    "role": "system",
+                    "content": (
+                        "You explain why a TV show search result matched a user's query. "
+                        "Use only the provided result information. "
+                        "Write 1 short sentence. "
+                        "Do not mention scores."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        f"User query: {user_query}\n"
+                        f"Retrieval query: {retrieval_query}\n"
+                        f"Show title: {title}\n"
+                        f"Overview: {overview}\n\n"
+                    ),
+                },
+            ]
+
+            response = client.chat(prompt, stream=False, show_thinking=False)
+            r["llm_explanation"] = response["content"].strip()
+
+        except Exception:
+            r["llm_explanation"] = "This result matched based on its title, overview, or related discussion."
+
+    return results
+
 def run_rag(user_query: str, client: LLMClient, top_k: int = 10):
   """ 
   Full RAG pipeline: user query -> rewritten query -> retrieval -> displayed hits + LLM answer
