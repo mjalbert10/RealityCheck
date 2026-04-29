@@ -177,6 +177,7 @@ def result_explanations(user_query, retrieval_query, results, client):
                         f"Retrieval query: {retrieval_query}\n"
                         f"Show title: {title}\n"
                         f"Overview: {overview}\n\n"
+                        Why did this result match?
                     ),
                 },
             ]
