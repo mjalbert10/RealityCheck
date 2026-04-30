@@ -5,9 +5,8 @@ function Result({
   similarity,
   description,
   tags,
-  keywords,
-  aiExplanation,
   dimensions,
+  aiExplanation,
 }: {
   title: string;
   year: number;
@@ -15,9 +14,8 @@ function Result({
   similarity: number;
   description: string;
   tags: string[];
-  keywords: string[];
+  dimensions?: { dimension: number; matched_words: string[]; positive_words: string[] }[];
   aiExplanation?: string;
-  dimensions?: any[];
 }) {
   const pct = Math.round(similarity * 100);
   const tier = similarity >= 0.75 ? 'high' : similarity >= 0.5 ? 'mid' : 'low';
@@ -53,23 +51,23 @@ function Result({
 
       <p className="result-desc">{description}</p>
 
-      {(aiExplanation || keywords.length > 0) && (
+      {aiExplanation && aiExplanation.length > 0 && (
         <div className="result-match">
           <div className="result-match-label">Why it matched</div>
-          {aiExplanation ?? keywords.join(', ')}
+          {aiExplanation}
         </div>
       )}
 
       {(dimensions?.length ?? 0) > 0 && (
         <div className="result-dims">
           {dimensions!.slice(0, 3).map((dim, i) => (
-            <div key={i} className="dim-row">
+            <div key={dim.dimension} className="dim-row">
               <span className="dim-label">Dim {dim.dimension}</span>
               <div className="dim-bar-bg">
                 <div className="dim-bar-fill" style={{ width: `${dimWidths[i]}%` }} />
               </div>
               <span className="dim-words">
-                {dim.matched_words?.slice(0, 3).join(', ') || 'general theme'}
+                {dim.positive_words?.slice(0, 3).join(', ') || 'general theme'}
               </span>
             </div>
           ))}

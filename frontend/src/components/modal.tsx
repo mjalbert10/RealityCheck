@@ -1,5 +1,10 @@
 import { useEffect } from 'react'
 
+interface Dimension {
+  dimension: number
+  matched_words: string[]
+}
+
 interface ModalProps {
   show: {
     title: string
@@ -15,9 +20,8 @@ interface ModalProps {
     vote_count: number
     reddit_posts: unknown[]
     reddit_comments: unknown[]
-    match_explanation?: string
-    match_dimensions?: any[]
-    keywords: string[]
+    match_dimensions?: Dimension[]
+    llm_explanation?: string
   } | null
   onClose: () => void
 }
@@ -41,9 +45,8 @@ export default function Modal({ show, onClose }: ModalProps) {
 
   const year = show.first_air_date?.split('-')[0] ?? 'Unknown'
   const posterUrl = `https://image.tmdb.org/t/p/original${show.poster_path}`
-  const aiExplanation = show.match_explanation
+  const aiExplanation = show.llm_explanation
   const dimensions = show.match_dimensions
-  const keywords = show.keywords ?? []
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -107,10 +110,10 @@ export default function Modal({ show, onClose }: ModalProps) {
 
           <p className="modal-description">{show.description}</p>
 
-          {(aiExplanation || keywords.length > 0) && (
+          {aiExplanation && aiExplanation.length > 0 && (
             <div className="modal-match">
               <p className="modal-match-label">Why it matched</p>
-              <p className="modal-match-text">{aiExplanation ?? keywords.join(', ')}</p>
+              <p className="modal-match-text">{aiExplanation}</p>
             </div>
           )}
 

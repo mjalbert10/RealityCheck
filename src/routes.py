@@ -1,7 +1,7 @@
 import os
 from flask import send_from_directory, request, jsonify
 from flask_sqlalchemy import query
-from svd import svd_search, explain_why_result_matched, get_user_facing_keywords
+from svd import svd_search, explain_why_result_matched, get_user_facing_keywords, top_dimensions
 from tfidf_search import tfidf_search
 from rag import generate_answer, result_explanations, rewrite_query, retrieve_hits, SVD_INDEX
 from infosci_spark_client import LLMClient
@@ -78,17 +78,12 @@ def register_routes(app):
                 enriched = []
                 for r in results:
                     try:
-                        explanation = explain_why_result_matched(finQuery, r, SVD_INDEX)
-                        keywords = get_user_facing_keywords(explanation)
-                        matchReason = explanation.get("match_reason", "Matched on relevance")
-                        
-                        r["match_explanation"] = f"Matched because {keywords}"
-
-                        # r["match_explanation"] = f"Matched on: {', '.join(keywords)}"
-                        r["match_dimensions"] = explanation.get("dimensions", []) if explanation else []
+                        explanation = top_dimensions(finQuery, r, SVD_INDEX, top_k_dims=3, top_words=5)
+                        r["match_dimensions"] = explanation.get("dimensions", [])
+                        r["dimensions"] = [d["dimension"] for d in explanation.get("dimensions", [])]
                     except Exception:
-                        r["match_explanation"] = None
                         r["match_dimensions"] = []
+                        r["dimensions"] = []
 
                     enriched.append(r)
 

@@ -21,7 +21,8 @@ interface ShowResult {
   score: number; genre_ids: number[]; poster_path: string | null;
   origin_country: string[]; vote_count: number;
   reddit_posts: unknown[]; reddit_comments: unknown[];
-  keywords: string[]; match_explanation?: string; match_dimensions?: any[];
+  match_dimensions: { dimension: number; matched_words: string[]; positive_words: string[] }[];
+  dimensions: number[];
   llm_explanation?: string;
 }
 
@@ -326,7 +327,6 @@ export default function App() {
                     similarity={parseFloat(show.score.toFixed(2))}
                     description={show.description}
                     tags={show.genre_ids?.map(id => GENRE_MAP[id] ?? `Genre ${id}`).filter(Boolean) ?? [show.language?.toUpperCase()]}
-                    keywords={show.keywords ?? []}
                     aiExplanation={show.llm_explanation}
                     dimensions={show.match_dimensions}
                   />
