@@ -60,7 +60,7 @@ function Result({
 
       {(dimensions?.length ?? 0) > 0 && (
         <div className="result-dims">
-          {dimensions!.slice(0, 3).map((dim, i) => (
+          {dimensions!.slice(0, 3).map((dim) => (
             <div key={dim.dimension} className="dim-row">
               <span className="dim-label">Dim {dim.dimension} · {Math.round(dim.contribution * 100)}%</span>
               <div className="dim-bar-bg">
