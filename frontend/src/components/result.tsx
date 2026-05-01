@@ -14,12 +14,12 @@ function Result({
   similarity: number;
   description: string;
   tags: string[];
-  dimensions?: { dimension: number; matched_words: string[]; positive_words: string[] }[];
+  dimensions?: { dimension: number; matched_words: string[]; positive_words: string[]; contribution: number }[];
   aiExplanation?: string;
 }) {
   const pct = Math.round(similarity * 100);
   const tier = similarity >= 0.75 ? 'high' : similarity >= 0.5 ? 'mid' : 'low';
-  const dimWidths = [88, 61, 40];
+  const maxContribution = Math.max(...dimensions!.map(d => d.contribution));
 
   return (
     <div className="result-card">
@@ -62,9 +62,9 @@ function Result({
         <div className="result-dims">
           {dimensions!.slice(0, 3).map((dim, i) => (
             <div key={dim.dimension} className="dim-row">
-              <span className="dim-label">Dim {dim.dimension}</span>
+              <span className="dim-label">Dim {dim.dimension} · {Math.round(dim.contribution * 100)}%</span>
               <div className="dim-bar-bg">
-                <div className="dim-bar-fill" style={{ width: `${dimWidths[i]}%` }} />
+                <div className="dim-bar-fill" style={{ width: `${Math.round((dim.contribution / maxContribution) * 100)}%` }} />
               </div>
               <span className="dim-words">
                 {dim.positive_words?.slice(0, 3).join(', ') || 'general theme'}

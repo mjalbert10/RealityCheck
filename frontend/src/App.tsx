@@ -21,7 +21,7 @@ interface ShowResult {
   score: number; genre_ids: number[]; poster_path: string | null;
   origin_country: string[]; vote_count: number;
   reddit_posts: unknown[]; reddit_comments: unknown[];
-  match_dimensions: { dimension: number; matched_words: string[]; positive_words: string[] }[];
+  match_dimensions: { dimension: number; matched_words: string[]; positive_words: string[]; contribution: number }[];
   dimensions: number[];
   llm_explanation?: string;
 }

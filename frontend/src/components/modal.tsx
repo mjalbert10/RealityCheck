@@ -3,6 +3,8 @@ import { useEffect } from 'react'
 interface Dimension {
   dimension: number
   matched_words: string[]
+  positive_words: string[]
+  contribution: number
 }
 
 interface ModalProps {
@@ -47,6 +49,7 @@ export default function Modal({ show, onClose }: ModalProps) {
   const posterUrl = `https://image.tmdb.org/t/p/original${show.poster_path}`
   const aiExplanation = show.llm_explanation
   const dimensions = show.match_dimensions
+  const maxContribution = Math.max(...dimensions!.map(d => d.contribution));
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -123,12 +126,12 @@ export default function Modal({ show, onClose }: ModalProps) {
               <div className="modal-dims-list">
                 {dimensions!.slice(0, 3).map((dim, i) => (
                   <div key={i} className="modal-dim-row">
-                    <span className="modal-dim-label">Dim {dim.dimension}</span>
+                    <span className="modal-dim-label">Dim {dim.dimension} · {Math.round(dim.contribution * 100)}%</span>
                     <div className="modal-dim-bar-bg">
-                      <div className="modal-dim-bar-fill" style={{ width: `${[88, 61, 40][i]}%` }} />
+                      <div className="modal-dim-bar-fill" style={{ width: `${Math.round((dim.contribution / maxContribution) * 100)}%` }} />
                     </div>
                     <span className="modal-dim-words">
-                      {dim.matched_words?.slice(0, 3).join(', ') || 'general theme'}
+                      {dim.positive_words?.slice(0, 3).join(', ') || 'general theme'}
                     </span>
                   </div>
                 ))}

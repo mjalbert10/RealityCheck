@@ -312,7 +312,7 @@ body {
 
 .result-dims { display: flex; flex-direction: column; gap: 5px; }
 .dim-row { display: flex; align-items: center; gap: 8px; font-size: 0.78rem; }
-.dim-label { width: 52px; flex-shrink: 0; color: #999; }
+.dim-label { width: 90px; flex-shrink: 0; color: #999; }
 .dim-bar-bg { flex: 1; height: 4px; background: #2a2a28; border-radius: 2px; overflow: hidden; }
 .dim-bar-fill { height: 100%; background: #5a4fcf; border-radius: 2px; }
 .dim-words { max-width: 140px; color: #999; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
